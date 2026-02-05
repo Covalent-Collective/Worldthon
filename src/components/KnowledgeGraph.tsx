@@ -283,9 +283,10 @@ export function KnowledgeGraph({
           warmupTicks={100}
           cooldownTicks={0}
           cooldownTime={0}
-          d3AlphaDecay={1}
-          d3VelocityDecay={0.9}
-          d3AlphaMin={0.5}
+          d3AlphaDecay={0.02}
+          d3VelocityDecay={0.3}
+          d3AlphaMin={0.001}
+          nodeVal={10}
           enableZoomInteraction={true}
           enablePanInteraction={true}
           minZoom={0.3}
@@ -347,8 +348,8 @@ export function KnowledgeGraph({
               }
             }
 
-            const baseRadius = 5
-            let radius = isHighlighted || isHovered ? baseRadius + 2 : baseRadius
+            const baseRadius = 3
+            let radius = isHighlighted || isHovered ? baseRadius + 1.5 : baseRadius
 
             // Expand radius slightly when wave hits
             if (searchWaveHit) {
@@ -385,7 +386,7 @@ export function KnowledgeGraph({
             }
 
             // Glow effect
-            const glowRadius = radius + (isHighlighted || isHovered ? 12 : 8)
+            const glowRadius = radius + (isHighlighted || isHovered ? 8 : 5)
             const glow = ctx.createRadialGradient(x, y, radius * 0.5, x, y, glowRadius)
             if (isRecentlyCited && animationPhase > 0) {
               glow.addColorStop(0, 'rgba(74, 222, 128, 0.6)')
@@ -442,8 +443,8 @@ export function KnowledgeGraph({
             ctx.fill()
 
             // Label
-            const label = n.name.length > 12 ? n.name.slice(0, 11) + '…' : n.name
-            const fontSize = 10
+            const label = n.name.length > 10 ? n.name.slice(0, 9) + '…' : n.name
+            const fontSize = 8
             ctx.font = `500 ${fontSize}px "Pretendard", -apple-system, sans-serif`
             ctx.textAlign = 'center'
             ctx.textBaseline = 'top'
@@ -460,7 +461,7 @@ export function KnowledgeGraph({
             // Citation badge
             if (n.citationCount > 0 && (isHighlighted || isRecentlyCited || isHovered)) {
               const badgeText = n.citationCount.toString()
-              ctx.font = `600 8px "Pretendard", sans-serif`
+              ctx.font = `600 7px "Pretendard", sans-serif`
               const tw = ctx.measureText(badgeText).width
               const bx = x + radius + 4
               const by = y - radius - 2
@@ -479,9 +480,9 @@ export function KnowledgeGraph({
 
             // +1 floating animation
             if (isRecentlyCited && animationPhase > 0 && animationPhase < 4) {
-              const floatY = y - radius - 16 - (animationPhase * 8)
+              const floatY = y - radius - 12 - (animationPhase * 6)
               const alpha = Math.max(0, 1 - animationPhase * 0.25)
-              ctx.font = `bold 14px "Pretendard", sans-serif`
+              ctx.font = `bold 10px "Pretendard", sans-serif`
               ctx.textAlign = 'center'
               ctx.textBaseline = 'bottom'
               ctx.fillStyle = `rgba(74, 222, 128, ${alpha})`
