@@ -46,13 +46,16 @@ export default function LandingPage() {
           검증된 인간 지식의 보존소
         </p>
 
-        <Link
-          href="/marketplace"
+        <button
+          onClick={() => {
+            // Mock verification for demo
+            useUserStore.getState().setVerified(true, '0x' + Math.random().toString(16).slice(2, 10) + '...anon')
+          }}
           className="w-full max-w-[280px] bg-black text-white py-4 px-6 rounded-full font-medium flex items-center justify-center gap-3 hover:bg-gray-800 transition-colors"
         >
           <span className="text-xl">⚫</span>
           World ID로 시작하기
-        </Link>
+        </button>
 
         <p className="text-gray-400 text-xs">
           Orb 인증으로 지식을 기여하고 보상받으세요
