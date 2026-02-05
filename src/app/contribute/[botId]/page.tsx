@@ -80,19 +80,23 @@ export default function ContributePage() {
                 animationDuration: `${2 + Math.random() * 2}s`,
               }}
             >
-              <span className="text-2xl">
-                {['✨', '🌟', '💫', '⚡', '🎉'][Math.floor(Math.random() * 5)]}
-              </span>
+              <div className={`w-2 h-2 rounded-full ${
+                ['bg-aurora-cyan', 'bg-aurora-violet', 'bg-green-400', 'bg-sky-400', 'bg-yellow-400'][Math.floor(Math.random() * 5)]
+              }`} />
             </div>
           ))}
         </div>
 
         {/* Success content card */}
         <div className="relative glass-card rounded-3xl p-8 mx-4 max-w-sm w-full text-center space-y-6 animate-scale-in">
-          {/* Celebration emoji */}
+          {/* Success icon */}
           <div className="relative">
             <div className="absolute inset-0 bg-aurora-cyan/20 blur-3xl rounded-full animate-pulse-glow" />
-            <div className="relative text-6xl animate-bounce-subtle">🎉</div>
+            <div className="relative w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-aurora-cyan to-aurora-violet flex items-center justify-center animate-bounce-subtle">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
           </div>
 
           {/* Success message */}
@@ -111,7 +115,9 @@ export default function ContributePage() {
 
           {/* Contribution Power indicator */}
           <div className="inline-flex items-center gap-2 bg-aurora-cyan/10 text-aurora-cyan px-5 py-3 rounded-full text-sm font-bold animate-pulse-glow border border-aurora-cyan/30">
-            <span className="text-lg">⚡</span>
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+            </svg>
             +5 Contribution Power
           </div>
 
