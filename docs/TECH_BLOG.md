@@ -247,27 +247,165 @@ react-force-graph-2d로 노드들이 물리 엔진으로 움직이는 그래프�
 
 ---
 
+## Day 2: PWA, 테스트 자동화, 그리고 404 지옥
+
+### 아침: PWA 설정
+
+데모할 때 "앱처럼 보이게" 하고 싶었다. next-pwa 설치.
+
+```bash
+npm install next-pwa
+```
+
+next.config.mjs 수정:
+
+```javascript
+import withPWA from 'next-pwa'
+
+const pwaConfig = withPWA({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development'
+})
+
+export default pwaConfig({})
+```
+
+manifest.json도 만들었다. 이제 홈 화면에 추가하면 진짜 앱처럼 보인다.
+
+### 오전: 모바일 전용 뷰
+
+해커톤 심사할 때 폰으로 보여줄 거다. 근데 개발은 PC로 하니까... PC에서도 모바일처럼 보이게 하자.
+
+```tsx
+// layout.tsx
+<div className="min-h-screen flex justify-center bg-gray-100">
+  <div className="w-full max-w-[390px] bg-white min-h-screen shadow-xl">
+    {children}
+  </div>
+</div>
+```
+
+390px 고정. iPhone 14 기준이다. 이제 PC에서 봐도 폰 화면처럼 가운데에 뜬다.
+
+### 오후: 404 지옥
+
+첫 번째 문제: 로그인 버튼 누르면 404
+
+```tsx
+// 문제의 코드
+<Link href="/marketplace">World ID로 시작하기</Link>
+```
+
+아, /marketplace 페이지가 없지. 로그인하면 같은 페이지에서 마켓플레이스가 렌더링되는 구조인데 Link를 썼네.
+
+```tsx
+// 수정
+<button onClick={() => {
+  useUserStore.getState().setVerified(true, '0x...')
+}}>
+  World ID로 시작하기
+</button>
+```
+
+두 번째 문제: 하단 탐색 메뉴에서 "탐색" 누르면 404
+
+/explore/[botId] 페이지는 있는데 /explore 페이지가 없었다. 새로 만들었다.
+
+```tsx
+// src/app/explore/page.tsx
+export default function ExplorePage() {
+  return (
+    <main>
+      <h1>지식 탐색</h1>
+      <p>전문가 봇의 지식 그래프를 탐색하세요</p>
+      {expertBots.map(bot => (
+        <Link href={`/explore/${bot.id}`}>
+          {bot.name}
+        </Link>
+      ))}
+    </main>
+  )
+}
+```
+
+### 저녁: Playwright로 E2E 테스트 자동화
+
+수동으로 테스트하다 지쳤다. Playwright 설치하고 자동화했다.
+
+```typescript
+// scripts/e2e-test.ts
+const browser = await chromium.launch({ headless: true })
+const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+
+// 1. 랜딩 페이지
+await page.goto('http://localhost:3000')
+await page.screenshot({ path: 'screenshots/01-landing.png' })
+
+// 2. 로그인
+await page.click('button:has-text("World ID로 시작하기")')
+await page.screenshot({ path: 'screenshots/02-marketplace.png' })
+
+// 3. 탐색 페이지
+await page.click('text=탐색하기')
+// ... 계속
+```
+
+이제 `npx tsx scripts/e2e-test.ts` 한 줄이면 전체 플로우 스크린샷이 자동으로 찍힌다.
+
+처음엔 테스트가 자꾸 실패했다:
+- 타임아웃 → waitForTimeout 늘림
+- 잘못된 botId → mock 데이터 확인해서 수정
+- 뒤로가기 후 요소 못 찾음 → 직접 URL 이동으로 변경
+
+**최종 결과: 7개 테스트 시나리오 전부 통과**
+
+```
+1️⃣ 랜딩 페이지 ✅
+2️⃣ 마켓플레이스 ✅ (봇 4개 확인)
+3️⃣ 지식 그래프 ✅ (캔버스 렌더링 확인)
+4️⃣ 기여 페이지 ✅ (인증 완료 + 입력 폼)
+5️⃣ 보상 페이지 ✅ (WLD 클레임 UI)
+6️⃣ 탐색 목록 ✅ (봇 4개 링크)
+7️⃣ 네비게이션 ✅ (홈으로 이동)
+```
+
+### 밤: 로그아웃 기능
+
+랜딩 페이지가 안 보인다고? 이미 인증된 상태로 localStorage에 저장돼서 그렇다.
+
+```typescript
+// userStore.ts에 추가
+logout: () => set({
+  isVerified: false,
+  nullifierHash: null,
+  rewards: { ... 초기값 }
+})
+```
+
+마켓플레이스 헤더에 로그아웃 버튼도 추가했다. 이제 테스트하기 편하다.
+
+**Day 2 결과**: PWA 설정, 모바일 전용 뷰, 404 수정 2건, E2E 테스트 자동화, 로그아웃 기능
+
+---
+
 ## 앞으로 해야 할 것들
 
-### Day 2 (예정)
-- [ ] 마켓플레이스 페이지 완성
-- [ ] World ID 인증 플로우 실제로 연결
-- [ ] 지식 기여 폼 만들기
-
 ### Day 3 (예정)
-- [ ] 그래프 탐색 페이지
-- [ ] 질문하면 답변 나오는 플로우
-- [ ] 기여 영수증 (누구 지식이 쓰였는지 보여주기)
+- [ ] World ID 실제 연동 (Mock → Real)
+- [ ] 질문하면 답변 나오는 플로우 개선
+- [ ] 기여 영수증 UI 다듬기
 
 ### Day 4 (예정)
-- [ ] 보상 대시보드
-- [ ] 전체 플로우 연결
-- [ ] 모바일에서 안 깨지게 하기
+- [ ] 애니메이션 추가 (성공/실패 피드백)
+- [ ] 전체 플로우 최종 점검
+- [ ] 엣지 케이스 처리
 
 ### Day 5 (예정)
-- [ ] 애니메이션 다듬기
 - [ ] 데모 시나리오 연습
 - [ ] 발표 준비
+- [ ] 최종 버그 수정
 
 ---
 

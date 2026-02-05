@@ -10,6 +10,7 @@ interface UserState {
   addContribution: (botId: string, node: KnowledgeNode) => void
   incrementCitations: (count: number) => void
   claimRewards: () => void
+  logout: () => void
 }
 
 export const useUserStore = create<UserState>()(
@@ -57,7 +58,18 @@ export const useUserStore = create<UserState>()(
           ...state.rewards,
           pendingWLD: 0
         }
-      }))
+      })),
+
+      logout: () => set({
+        isVerified: false,
+        nullifierHash: null,
+        rewards: {
+          contributionPower: 0,
+          totalCitations: 0,
+          pendingWLD: 0,
+          contributions: []
+        }
+      })
     }),
     {
       name: 'seed-vault-user'

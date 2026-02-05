@@ -81,15 +81,24 @@ function StatCard({ label, value }: { label: string; value: number }) {
 }
 
 function MarketplacePage() {
+  const { nullifierHash, logout } = useUserStore()
+
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">전문가 봇</h1>
-        <button className="p-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400">{nullifierHash?.slice(0, 10)}...</span>
+          <button
+            onClick={logout}
+            className="p-2 text-gray-400 hover:text-gray-600"
+            title="로그아웃"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div className="space-y-3">
