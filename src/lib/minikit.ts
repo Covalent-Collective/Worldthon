@@ -1,4 +1,4 @@
-import { MiniKit, VerificationLevel, MiniAppVerifyActionPayload, ISuccessResult } from '@worldcoin/minikit-js'
+import { MiniKit, VerificationLevel, ISuccessResult } from '@worldcoin/minikit-js'
 
 export const initMiniKit = () => {
   if (typeof window !== 'undefined') {

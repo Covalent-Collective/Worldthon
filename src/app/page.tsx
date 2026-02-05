@@ -1,101 +1,157 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useUserStore } from '@/stores/userStore'
+import { expertBots } from '@/lib/mock-data'
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+export default function LandingPage() {
+  const { isVerified } = useUserStore()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const totalNodes = expertBots.reduce((sum, bot) => sum + bot.nodeCount, 0)
+  const totalContributors = expertBots.reduce((sum, bot) => sum + bot.contributorCount, 0)
+
+  if (!mounted) {
+    return null
+  }
+
+  if (isVerified) {
+    return (
+      <main className="min-h-screen flex flex-col">
+        <div className="flex-1 overflow-auto">
+          <MarketplacePage />
         </div>
+        <BottomNav active="home" />
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+    )
+  }
+
+  return (
+    <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
+      <div className="flex flex-col items-center text-center space-y-8">
+        <div className="text-6xl">🌱</div>
+
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold">Seed Vault</h1>
+          <p className="text-gray-500 text-sm">Human Knowledge Repository</p>
+        </div>
+
+        <p className="text-gray-600 text-sm max-w-[280px]">
+          Dead Internet 시대,<br />
+          검증된 인간 지식의 보존소
+        </p>
+
+        <Link
+          href="/marketplace"
+          className="w-full max-w-[280px] bg-black text-white py-4 px-6 rounded-full font-medium flex items-center justify-center gap-3 hover:bg-gray-800 transition-colors"
         >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <span className="text-xl">⚫</span>
+          World ID로 시작하기
+        </Link>
+
+        <p className="text-gray-400 text-xs">
+          Orb 인증으로 지식을 기여하고 보상받으세요
+        </p>
+
+        <div className="flex gap-4 pt-8">
+          <StatCard label="노드" value={totalNodes} />
+          <StatCard label="기여자" value={totalContributors} />
+          <StatCard label="봇" value={expertBots.length} />
+        </div>
+      </div>
+    </main>
+  )
+}
+
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="bg-gray-50 rounded-xl px-5 py-3 text-center">
+      <div className="text-xl font-bold">{value}</div>
+      <div className="text-xs text-gray-500">{label}</div>
     </div>
-  );
+  )
+}
+
+function MarketplacePage() {
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold">전문가 봇</h1>
+        <button className="p-2">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {expertBots.map(bot => (
+          <BotCard key={bot.id} bot={bot} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function BotCard({ bot }: { bot: typeof expertBots[0] }) {
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+      <div className="flex gap-4">
+        <div className="text-4xl">{bot.icon}</div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-base">{bot.name}</h3>
+          <p className="text-gray-500 text-sm truncate">{bot.description}</p>
+          <p className="text-gray-400 text-xs mt-1">
+            {bot.nodeCount} 노드 • {bot.contributorCount} 기여자
+          </p>
+        </div>
+      </div>
+      <div className="flex gap-2 mt-4">
+        <Link
+          href={`/explore/${bot.id}`}
+          className="flex-1 py-2.5 px-4 text-center text-sm font-medium border border-gray-200 rounded-full hover:bg-gray-50 transition-colors"
+        >
+          탐색하기
+        </Link>
+        <Link
+          href={`/contribute/${bot.id}`}
+          className="flex-1 py-2.5 px-4 text-center text-sm font-medium bg-black text-white rounded-full hover:bg-gray-800 transition-colors"
+        >
+          기여하기
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+function BottomNav({ active }: { active: 'home' | 'explore' | 'rewards' }) {
+  return (
+    <nav className="border-t border-gray-100 bg-white">
+      <div className="flex justify-around py-3">
+        <Link href="/" className={`flex flex-col items-center gap-1 ${active === 'home' ? 'text-black' : 'text-gray-400'}`}>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+          <span className="text-xs">홈</span>
+        </Link>
+        <Link href="/explore" className={`flex flex-col items-center gap-1 ${active === 'explore' ? 'text-black' : 'text-gray-400'}`}>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span className="text-xs">탐색</span>
+        </Link>
+        <Link href="/rewards" className={`flex flex-col items-center gap-1 ${active === 'rewards' ? 'text-black' : 'text-gray-400'}`}>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-xs">보상</span>
+        </Link>
+      </div>
+    </nav>
+  )
 }

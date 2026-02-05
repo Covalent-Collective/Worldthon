@@ -26,12 +26,8 @@ interface GraphNode {
   val: number
   color: string
   node: KnowledgeNode
-}
-
-interface GraphLink {
-  source: string
-  target: string
-  label: string
+  x?: number
+  y?: number
 }
 
 export function KnowledgeGraph({ bot, highlightedNodes = [], onNodeClick }: KnowledgeGraphProps) {
@@ -60,17 +56,17 @@ export function KnowledgeGraph({ bot, highlightedNodes = [], onNodeClick }: Know
       val: Math.log(node.citationCount + 1) * 3 + 5,
       color: highlightedNodes.includes(node.id) ? '#000000' : '#9CA3AF',
       node
-    })) as GraphNode[],
+    })),
     links: bot.graph.edges.map(edge => ({
       source: edge.source,
       target: edge.target,
       label: edge.relationship
-    })) as GraphLink[]
+    }))
   }
 
-  const handleNodeClick = useCallback((node: GraphNode) => {
+  const handleNodeClick = useCallback((node: object) => {
     if (onNodeClick) {
-      onNodeClick(node.node)
+      onNodeClick((node as GraphNode).node)
     }
   }, [onNodeClick])
 
@@ -80,8 +76,8 @@ export function KnowledgeGraph({ bot, highlightedNodes = [], onNodeClick }: Know
         width={dimensions.width}
         height={dimensions.height}
         graphData={graphData}
-        nodeLabel={(node: GraphNode) => node.name}
-        nodeColor={(node: GraphNode) => node.color}
+        nodeLabel={(node: object) => (node as GraphNode).name}
+        nodeColor={(node: object) => (node as GraphNode).color}
         nodeRelSize={4}
         linkColor={() => '#E5E7EB'}
         linkWidth={1}
@@ -89,22 +85,23 @@ export function KnowledgeGraph({ bot, highlightedNodes = [], onNodeClick }: Know
         linkDirectionalArrowRelPos={1}
         onNodeClick={handleNodeClick}
         cooldownTicks={50}
-        nodeCanvasObject={(node: GraphNode, ctx, globalScale) => {
-          const label = node.name
+        nodeCanvasObject={(node: object, ctx: CanvasRenderingContext2D, globalScale: number) => {
+          const graphNode = node as GraphNode
+          const label = graphNode.name
           const fontSize = 10 / globalScale
           ctx.font = `${fontSize}px Sans-Serif`
 
           // Draw node circle
           ctx.beginPath()
-          ctx.arc(node.x!, node.y!, node.val, 0, 2 * Math.PI)
-          ctx.fillStyle = node.color
+          ctx.arc(graphNode.x || 0, graphNode.y || 0, graphNode.val, 0, 2 * Math.PI)
+          ctx.fillStyle = graphNode.color
           ctx.fill()
 
           // Draw label
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
-          ctx.fillStyle = highlightedNodes.includes(node.id) ? '#000' : '#6B7280'
-          ctx.fillText(label, node.x!, node.y! + node.val + fontSize)
+          ctx.fillStyle = highlightedNodes.includes(graphNode.id) ? '#000' : '#6B7280'
+          ctx.fillText(label, graphNode.x || 0, (graphNode.y || 0) + graphNode.val + fontSize)
         }}
       />
     </div>

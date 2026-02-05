@@ -11,7 +11,7 @@ interface BotCardProps {
 
 export function BotCard({ bot }: BotCardProps) {
   return (
-    <Card hoverable className="overflow-hidden">
+    <Card className="overflow-hidden hover:shadow-md transition-shadow">
       <CardContent className="p-5">
         <div className="flex items-start gap-4">
           <div className="text-4xl">{bot.icon}</div>
@@ -46,7 +46,7 @@ export function BotCard({ bot }: BotCardProps) {
             </Button>
           </Link>
           <Link href={`/contribute/${bot.id}`} className="flex-1">
-            <Button variant="primary" size="sm" className="w-full">
+            <Button variant="default" size="sm" className="w-full">
               기여하기
             </Button>
           </Link>

@@ -32,7 +32,7 @@ export function VerifyButton({ onVerified }: VerifyButtonProps) {
     <div className="space-y-2">
       <Button
         onClick={handleClick}
-        loading={isVerifying}
+        disabled={isVerifying}
         className="w-full bg-gradient-to-r from-gray-900 to-black"
         size="lg"
       >

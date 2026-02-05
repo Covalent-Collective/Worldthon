@@ -23,7 +23,7 @@ export function useWorldId() {
         setError('인증에 실패했습니다. 다시 시도해주세요.')
         return false
       }
-    } catch (err) {
+    } catch {
       setError('인증 중 오류가 발생했습니다.')
       return false
     } finally {
