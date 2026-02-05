@@ -1,302 +1,163 @@
-# Seed Vault 개발기: AI 시대의 인간 지식 보존소 만들기
+# Web3 모르는 개발자의 해커톤 생존기
 
-> World Build Korea Hackathon 2026 참가 프로젝트 개발 여정
-
-**작성일**: 2026년 2월 5일
-**팀**: Covalent Collective
-**프로젝트**: [Seed Vault](https://github.com/Covalent-Collective/Worldthon)
+> 파트너는 사라지고, 남은 건 녹음 파일과 스케치뿐
 
 ---
 
-## 목차
+## 서론: 그래서 내가 왜 여기 있지?
 
-1. [프로젝트 배경](#1-프로젝트-배경)
-2. [기술 스택 선정](#2-기술-스택-선정)
-3. [개발 과정](#3-개발-과정)
-4. [핵심 기술 구현](#4-핵심-기술-구현)
-5. [마주친 문제들과 해결 과정](#5-마주친-문제들과-해결-과정)
-6. [개발 일지](#6-개발-일지)
-7. [회고 및 다음 단계](#7-회고-및-다음-단계)
+나는 Web3에 대해 아무것도 모르는 그냥 개발자다.
 
----
+블록체인? 들어는 봤다. 토큰? 비트코인 말고는 잘 모른다. World ID? 그게 뭔데?
 
-## 1. 프로젝트 배경
+그런데 파트너가 어느 날 말했다.
 
-### 문제 인식: Dead Internet Era
+> "야, World Build Korea 해커톤 나가자."
 
-2026년, 인터넷 콘텐츠의 90%가 AI가 생성합니다. 검색 결과, 소셜 미디어, 리뷰 — 어디를 봐도 AI가 만든 콘텐츠가 넘쳐납니다.
+뭔 소린가 했다. 월드코인? 그 눈알 스캔하는 거? 내가?
 
-**질문**: 진짜 인간의 경험과 지식은 어디서 찾을 수 있을까요?
+파트너는 이미 아이디어로 가득 차 있었다. Dead Internet이 어쩌고, AI가 인터넷을 점령했고, 인간의 지식을 보존해야 하고... 열정적으로 설명하는데 솔직히 반 정도는 무슨 말인지 모르겠었다.
 
-### 솔루션: Seed Vault
+근데 듣다 보니까 생각이 났다. *"아, 이거 내가 아는 기술 좀 붙이면 되겠는데?"*
 
-**Seed Vault**는 World ID Orb로 인증된 인간만 기여할 수 있는 지식 저장소입니다.
+Next.js로 프론트 만들고, 상태 관리 붙이고, 그래프 시각화 라이브러리 쓰면 뭔가 나오겠지. World ID 연동은... 뭐 문서 보면 되겠지.
 
-핵심 가치:
-- **신뢰**: Orb 인증으로 봇과 AI 콘텐츠 차단
-- **보상**: 기여한 지식이 인용될 때마다 WLD 토큰 보상
-- **투명성**: 답변의 출처를 지식 그래프로 시각화
+그래서 말했다. "그래, 해보자."
 
 ---
 
-## 2. 기술 스택 선정
+## 파트너는 사라졌다
 
-### 프레임워크 & 라이브러리
+그리고 파트너는 사라졌다.
 
-| 영역 | 기술 | 선정 이유 |
-|------|------|-----------|
-| Framework | **Next.js 14** (App Router) | MiniKit 호환, SSR 지원, 빠른 개발 |
-| UI Components | **shadcn/ui** | 일관된 디자인 시스템, Radix 기반 접근성 |
-| Styling | **Tailwind CSS** | 빠른 UI 개발, 모바일 반응형 |
-| Auth | **World ID MiniKit** | World App 네이티브 통합 |
-| Graph Visualization | **react-force-graph-2d** | 경량, 모바일 최적화 |
-| State Management | **Zustand** | 가벼운 상태 관리, persist 지원 |
+아니, 사라진 건 아니고 각자 역할이 나뉜 거다. 파트너는 피치덱이랑 비즈니스 쪽 준비하고, 나는 뭔가 돌아가는 걸 만들어야 한다.
 
-### 왜 이 조합인가?
+내 손에 남은 건 이것들이었다:
+- 1시간 40분짜리 녹음 파일
+- 카페에서 급하게 스케치한 메모
+- "대충 이런 느낌?" 이라고 보내온 레퍼런스 링크 몇 개
 
-**Next.js 14 + MiniKit**: World App 내에서 실행되는 Mini App을 만들기 위해서는 MiniKit SDK와의 호환이 필수입니다. Next.js의 App Router는 서버 컴포넌트와 클라이언트 컴포넌트를 명확히 분리할 수 있어 MiniKit의 클라이언트 사이드 로직을 깔끔하게 처리할 수 있습니다.
-
-**shadcn/ui**: 해커톤에서 시간은 금입니다. shadcn/ui는 복사-붙여넣기 방식으로 필요한 컴포넌트만 가져올 수 있고, Tailwind와 완벽히 통합됩니다. 특히 Radix UI 기반이라 접근성이 기본 내장되어 있습니다.
-
-**Zustand**: Redux는 해커톤에서 너무 무겁습니다. Zustand는 보일러플레이트가 거의 없고, persist 미들웨어로 localStorage 연동이 한 줄이면 됩니다.
+좋다. 이것만으로 MVP를 만들어야 한다. 해커톤까지 남은 시간은 5일.
 
 ---
 
-## 3. 개발 과정
+## AI 파이프라인: 혼자서 팀플하기
 
-### 3.1 프로젝트 초기화
+혼자 모든 걸 할 순 없다. 근데 2026년이다. AI한테 시키면 된다.
+
+나만의 워크플로우가 만들어졌다:
+
+### Step 1: ChatGPT — 녹음 파일 정리
+
+녹음 파일을 ChatGPT에 던졌다. "우리가 뭔 얘기했는지 정리해줘."
+
+1시간 40분의 브레인스토밍이 깔끔한 요약으로 변했다. 핵심 아이디어, 유저 플로우, 기술적으로 필요한 것들. 스케치한 메모랑 합쳐서 초안이 나왔다.
+
+### Step 2: Gemini — 자료 수집 머신
+
+초안을 Gemini한테 던졌다.
+
+> "World ID가 뭔지, MiniKit이 뭔지, 해커톤에서 뭘 심사하는지 다 찾아줘."
+
+Gemini가 미쳤다. 공식 문서, 예제 코드, 다른 해커톤 우승작 분석까지. 내가 모르는 Web3 세계의 컨텍스트가 쏟아졌다.
+
+### Step 3: NotebookLM — 1,000개의 참고 자료
+
+여기서부터가 진짜다.
+
+Gemini가 찾아준 자료들, World ID 공식 문서, MiniKit 레포지토리, 비슷한 프로젝트들... 다 NotebookLM에 넣었다. 한 **1,000개 정도**의 소스가 쌓였다.
+
+NotebookLM한테 물어봤다:
+
+> "World ID 인증 구현하려면 뭘 알아야 해?"
+> "MiniKit이랑 Next.js 연동 어떻게 해?"
+> "nullifier_hash가 뭔데?"
+
+모르는 거 있을 때마다 물어보고, 대화하고, 이해하고. 마치 Web3 전문가 친구가 옆에 있는 것 같았다.
+
+### Step 4: Claude Code + NotebookLM MCP — 지식 연결
+
+이제 진짜 코딩이다.
+
+Claude Code Max를 켰다. 근데 여기서 핵심은 **NotebookLM MCP**다. NotebookLM에 쌓아둔 1,000개의 지식을 Claude Code가 직접 참조할 수 있다.
+
+> "이 프로젝트에서 World ID 인증 어떻게 구현해?"
+
+라고 물으면 Claude Code가 NotebookLM에서 관련 내용을 찾아서 답한다. 내가 일일이 복붙할 필요가 없다.
+
+### Step 5: Claude Code Opus 4.5 + Plan Mode — MVP 설계
+
+마지막 단계.
+
+Claude Code한테 플랜 모드로 말했다:
+
+> "우리 5일 안에 해커톤용 MVP 만들어야 해. 계획 세워봐."
+
+Opus 4.5가 생각하더니 몇 가지 옵션을 제시했다:
+
+1. 풀스택으로 가는 방법 (시간 부족)
+2. 프론트만 만들고 Mock 데이터 쓰는 방법 (현실적)
+3. 핵심 플로우 하나만 완성하는 방법 (안전하지만 밋밋함)
+
+2번을 선택했다. 데모에서 "돌아가는 것처럼 보이기"가 중요하니까.
+
+---
+
+## 그래서 뭘 만들기로 했나
+
+**Seed Vault** — Dead Internet 시대의 인간 지식 보존소
+
+컨셉은 이렇다:
+- 2026년, 인터넷의 90%가 AI가 만든 콘텐츠다
+- 진짜 인간의 경험과 지식은 어디서 찾지?
+- World ID Orb로 인증된 인간만 지식을 기여할 수 있는 플랫폼
+
+파트너의 비전이 드디어 이해됐다. 괜찮은 아이디어네.
+
+---
+
+## Day 1: 일단 뭐라도 만들자
+
+### 아침: 프로젝트 세팅
 
 ```bash
-# Next.js 프로젝트 생성
-npx create-next-app@latest seed-vault-mvp --typescript --tailwind --app
-
-# shadcn/ui 초기화
+npx create-next-app@latest seed-vault-mvp
 npx shadcn@latest init
-
-# 필요한 의존성 설치
 npm install zustand @worldcoin/minikit-js react-force-graph-2d
 ```
 
-### 3.2 폴더 구조 설계
+여기까지는 익숙하다. Next.js에 Tailwind, 컴포넌트는 shadcn/ui. 이건 내 영역이야.
+
+### 오후: 폴더 구조 잡기
+
+Claude Code한테 물어봤다:
+
+> "해커톤 MVP용 Next.js 프로젝트 구조 어떻게 잡을까?"
+
+답이 왔다. 심플하게 가자고.
 
 ```
 src/
-├── app/                    # Next.js App Router
-│   ├── layout.tsx          # MiniKit Provider 래핑
-│   ├── page.tsx            # 마켓플레이스 (홈)
-│   ├── contribute/[botId]/ # 지식 기여 페이지
-│   ├── explore/[botId]/    # 그래프 탐색 페이지
-│   └── rewards/            # 보상 대시보드
-├── components/
-│   ├── ui/                 # shadcn/ui 컴포넌트
-│   ├── BotCard.tsx         # 봇 카드 컴포넌트
-│   ├── KnowledgeGraph.tsx  # 지식 그래프 시각화
-│   ├── ContributionReceipt.tsx
-│   ├── VerifyButton.tsx    # World ID 인증 버튼
-│   └── RewardGauge.tsx     # 보상 게이지
-├── lib/
-│   ├── types.ts            # TypeScript 타입 정의
-│   ├── minikit.ts          # MiniKit 설정
-│   ├── mock-data.ts        # Mock 그래프 데이터
-│   └── utils.ts            # 유틸리티 함수
-├── hooks/
-│   └── useWorldId.ts       # World ID 인증 훅
-└── stores/
-    └── userStore.ts        # Zustand 스토어
+├── app/           # 페이지들
+├── components/    # UI 컴포넌트
+├── lib/           # 유틸, 타입, Mock 데이터
+├── hooks/         # 커스텀 훅
+└── stores/        # 상태 관리
 ```
 
-### 3.3 핵심 데이터 모델 설계
+깔끔하다. 이 정도면 5일 안에 관리 가능하다.
 
-```typescript
-// 지식 노드
-interface KnowledgeNode {
-  id: string
-  label: string
-  content: string
-  contributor: string  // nullifier_hash (익명화)
-  createdAt: string
-  citationCount: number
-}
+### 저녁: 핵심 컴포넌트들
 
-// 전문가 봇
-interface ExpertBot {
-  id: string
-  name: string
-  description: string
-  icon: string
-  category: string
-  graph: {
-    nodes: KnowledgeNode[]
-    edges: KnowledgeEdge[]
-  }
-}
-```
+**KnowledgeGraph.tsx** — 지식 그래프 시각화
 
----
-
-## 4. 핵심 기술 구현
-
-### 4.1 World ID 인증 (MiniKit)
-
-World ID Orb 인증은 Seed Vault의 핵심입니다. 인증된 인간만이 지식을 기여할 수 있습니다.
-
-```typescript
-// hooks/useWorldId.ts
-export function useWorldId() {
-  const { setVerified } = useUserStore()
-
-  const verify = async () => {
-    if (!MiniKit.isInstalled()) {
-      // World App 외부에서 실행 시 Mock 모드
-      return { success: false, error: 'MiniKit not installed' }
-    }
-
-    const result = await MiniKit.commandsAsync.verify({
-      action: 'contribute',
-      verification_level: 'orb'
-    })
-
-    if (result.status === 'success') {
-      setVerified(true, result.nullifier_hash)
-      return { success: true }
-    }
-
-    return { success: false, error: result.error_code }
-  }
-
-  return { verify }
-}
-```
-
-**핵심 포인트**: `nullifier_hash`는 사용자의 실제 신원을 알 수 없지만, 동일 사용자가 동일 액션에 대해 항상 같은 해시를 생성합니다. 이를 통해 익명성을 유지하면서도 중복 기여를 감지할 수 있습니다.
-
-### 4.2 지식 그래프 시각화
-
-react-force-graph-2d를 사용하여 지식 노드 간의 관계를 시각화합니다.
-
-```typescript
-// components/KnowledgeGraph.tsx
-'use client'
-
-import dynamic from 'next/dynamic'
-
-// Critical: SSR 비활성화
-const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
-  ssr: false,
-  loading: () => <GraphSkeleton />
-})
-
-export function KnowledgeGraph({ bot, highlightedNodes }) {
-  const graphData = {
-    nodes: bot.graph.nodes.map(node => ({
-      id: node.id,
-      name: node.label,
-      // 인용 횟수에 따라 노드 크기 결정
-      val: Math.log(node.citationCount + 1) * 3 + 5,
-      // 하이라이트된 노드는 검정색
-      color: highlightedNodes.includes(node.id) ? '#000000' : '#9CA3AF'
-    })),
-    links: bot.graph.edges.map(edge => ({
-      source: edge.source,
-      target: edge.target
-    }))
-  }
-
-  return (
-    <ForceGraph2D
-      graphData={graphData}
-      cooldownTicks={50}  // 성능 최적화
-      nodeRelSize={4}
-    />
-  )
-}
-```
-
-**중요**: `ssr: false` 설정이 필수입니다. react-force-graph-2d는 canvas API를 사용하므로 서버 사이드에서 렌더링할 수 없습니다.
-
-### 4.3 상태 관리 (Zustand)
-
-```typescript
-// stores/userStore.ts
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-
-export const useUserStore = create(
-  persist(
-    (set) => ({
-      isVerified: false,
-      nullifierHash: null,
-      rewards: {
-        contributionPower: 0,
-        totalCitations: 0,
-        pendingWLD: 0,
-        contributions: []
-      },
-
-      setVerified: (verified, nullifierHash) => set({
-        isVerified: verified,
-        nullifierHash: nullifierHash || null
-      }),
-
-      addContribution: (botId, node) => set((state) => ({
-        rewards: {
-          ...state.rewards,
-          contributionPower: Math.min(100, state.rewards.contributionPower + 5),
-          contributions: [...state.rewards.contributions, {
-            botId,
-            nodeId: node.id,
-            createdAt: new Date().toISOString()
-          }]
-        }
-      }))
-    }),
-    { name: 'seed-vault-user' }  // localStorage 키
-  )
-)
-```
-
-**persist 미들웨어**: 한 줄로 상태가 localStorage에 자동 저장됩니다. 사용자가 앱을 닫았다 열어도 인증 상태와 기여 내역이 유지됩니다.
-
----
-
-## 5. 마주친 문제들과 해결 과정
-
-### 5.1 Git 충돌 해결
-
-**문제**: 로컬 커밋과 원격 저장소 간 충돌 발생
-
-```bash
-! [rejected] main -> main (non-fast-forward)
-```
-
-**해결 과정**:
-
-```bash
-# 1. rebase로 원격 변경사항 가져오기
-git pull origin main --rebase
-
-# 2. 충돌 파일 확인
-git diff --name-only --diff-filter=U
-
-# 3. 충돌 해결 후 계속
-git add README.md
-git rebase --continue
-
-# 4. 푸시
-git push --set-upstream origin main
-```
-
-**교훈**: 협업 시에는 작업 시작 전 항상 `git pull`을 먼저 실행하는 습관이 중요합니다.
-
-### 5.2 SSR과 Canvas 라이브러리 충돌
-
-**문제**: react-force-graph-2d가 서버 사이드에서 크래시
+react-force-graph-2d를 써서 노드들이 둥둥 떠다니는 그래프를 만들었다. 처음에 SSR 에러가 났다.
 
 ```
 ReferenceError: window is not defined
 ```
 
-**해결**: Next.js의 dynamic import 활용
+아, canvas 라이브러리는 서버사이드에서 안 되지. Next.js의 dynamic import로 해결.
 
 ```typescript
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
@@ -304,134 +165,161 @@ const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
 })
 ```
 
-### 5.3 MiniKit 외부 실행 처리
-
-**문제**: World App 외부에서 앱 테스트 시 MiniKit API 사용 불가
-
-**해결**: Mock 모드 폴백 구현
+**userStore.ts** — Zustand로 상태 관리
 
 ```typescript
-if (!MiniKit.isInstalled()) {
-  // 개발/테스트용 Mock 모드
-  return mockVerification()
-}
+export const useUserStore = create(
+  persist(
+    (set) => ({
+      isVerified: false,
+      nullifierHash: null,
+      rewards: { ... },
+      setVerified: (verified, hash) => set({ ... }),
+      addContribution: (botId, node) => set({ ... })
+    }),
+    { name: 'seed-vault-user' }
+  )
+)
 ```
 
----
+persist 미들웨어 한 줄이면 localStorage에 자동 저장. Zustand 진짜 좋아.
 
-## 6. 개발 일지
+### 밤: Git 푸시... 그리고 충돌
 
-### Day 1 (2026-02-05)
+커밋하고 푸시하려는데:
 
-#### 오전: 프로젝트 세팅
-- Next.js 14 프로젝트 생성
-- Tailwind CSS 설정
-- shadcn/ui 초기화 (Button, Card, Input, Textarea)
+```
+! [rejected] main -> main (non-fast-forward)
+```
 
-#### 오후: 핵심 구조 설계
-- 폴더 구조 설계 및 생성
-- TypeScript 타입 정의 (`types.ts`)
-- Mock 데이터 구조 설계 (`mock-data.ts`)
-
-#### 저녁: 컴포넌트 개발
-- MiniKit Provider 설정
-- BotCard 컴포넌트 구현
-- KnowledgeGraph 컴포넌트 구현 (react-force-graph-2d)
-- Zustand 스토어 설정
-
-#### 마무리
-- Git 초기 커밋 및 GitHub 푸시
-- 충돌 해결 (README.md)
-- 31개 파일, 4,253줄 추가
-
-**커밋**: `7942d20` - Add UI components, stores, and project configuration
-
----
-
-### Day 2 (예정)
-
-- [ ] 마켓플레이스 페이지 UI 완성
-- [ ] World ID 인증 플로우 구현
-- [ ] 지식 기여 폼 구현
-
-### Day 3 (예정)
-
-- [ ] 그래프 탐색 페이지 구현
-- [ ] 질문-답변 플로우 연동
-- [ ] 기여 영수증 컴포넌트 완성
-
-### Day 4 (예정)
-
-- [ ] 보상 대시보드 구현
-- [ ] 전체 플로우 통합 테스트
-- [ ] 모바일 최적화
-
-### Day 5 (예정)
-
-- [ ] 애니메이션 추가
-- [ ] 에러 핸들링 강화
-- [ ] 데모 시나리오 리허설
-
----
-
-## 7. 회고 및 다음 단계
-
-### 잘된 점
-
-1. **명확한 문서화**: PLAN.md, ARCHITECTURE.md 등 상세한 문서를 먼저 작성하여 개발 방향이 명확했음
-2. **기술 스택 선정**: shadcn/ui + Zustand 조합이 해커톤에 최적화된 선택이었음
-3. **타입 안전성**: TypeScript 타입을 먼저 정의하여 개발 중 버그 최소화
-
-### 개선할 점
-
-1. **Git 워크플로우**: 원격 저장소와 더 자주 동기화 필요
-2. **테스트**: 단위 테스트 부재 — Post-MVP에서 추가 예정
-
-### Post-Hackathon 로드맵
-
-| Priority | Task |
-|----------|------|
-| P0 | 서버사이드 World ID 검증 |
-| P0 | PostgreSQL + Prisma 백엔드 |
-| P1 | 실제 WLD 토큰 보상 시스템 |
-| P2 | AI 기반 답변 생성 |
-| P2 | 커뮤니티 검증 시스템 |
-
----
-
-## 부록
-
-### A. 유용한 명령어
+아. 원격에 누가 뭔가 올렸나? 아 맞다, 처음에 GitHub에서 README 만들었지.
 
 ```bash
-# 개발 서버 실행
-npm run dev
-
-# shadcn/ui 컴포넌트 추가
-npx shadcn@latest add [component-name]
-
-# 빌드
-npm run build
-
-# 린트
-npm run lint
+git pull origin main --rebase
+# 충돌 발생: README.md
+# 수동으로 해결
+git add README.md
+git rebase --continue
+git push
 ```
 
-### B. 환경 변수 설정
+혼자 작업하는데도 충돌이 난다. 이게 개발이지.
 
-```env
-# .env.local
-NEXT_PUBLIC_APP_ID=app_xxx
-NEXT_PUBLIC_ACTION_ID=contribute
-```
-
-### C. 참고 자료
-
-- [World ID Developer Docs](https://docs.worldcoin.org)
-- [MiniKit Documentation](https://docs.worldcoin.org/minikit)
-- [shadcn/ui Components](https://ui.shadcn.com)
-- [Zustand Documentation](https://zustand-demo.pmnd.rs)
+**Day 1 결과**: 31개 파일, 4,253줄 추가. 뭔가 생기긴 했다.
 
 ---
 
-*이 문서는 개발이 진행됨에 따라 계속 업데이트됩니다.*
+## 기술적으로 배운 것들
+
+### World ID가 뭔지 이제 안다
+
+World ID는 "Proof of Personhood" 시스템이다. 간단히 말하면:
+
+1. 사용자가 Orb라는 기계로 홍채 스캔
+2. 고유한 신원 증명 생성 (실제 신원은 모름)
+3. 앱에서 이 증명으로 "이 사람은 진짜 인간" 확인 가능
+
+핵심은 **nullifier_hash**다:
+- 사용자의 실제 신원을 알 수 없음 (익명)
+- 근데 같은 사람이 같은 액션을 하면 같은 해시 생성
+- 중복 방지는 되면서 프라이버시 보장
+
+영리하다. Web3 사람들 머리 좋네.
+
+### MiniKit은 생각보다 쉬웠다
+
+World App 안에서 돌아가는 Mini App 만드는 SDK인데, 문서 보니까 React 훅처럼 쓰면 됐다:
+
+```typescript
+const result = await MiniKit.commandsAsync.verify({
+  action: 'contribute',
+  verification_level: 'orb'
+})
+```
+
+한 줄이면 Orb 인증 창이 뜬다. 생각보다 별 거 없네?
+
+### 그래프 시각화가 데모에서 먹힌다
+
+react-force-graph-2d로 노드들이 물리 엔진으로 움직이는 그래프를 만들었는데, 이게 데모에서 "와 뭔가 있어 보인다" 효과가 크다.
+
+기술적으로 복잡한 건 아닌데 시각적 임팩트가 있다. 해커톤에서 중요한 포인트.
+
+---
+
+## 앞으로 해야 할 것들
+
+### Day 2 (예정)
+- [ ] 마켓플레이스 페이지 완성
+- [ ] World ID 인증 플로우 실제로 연결
+- [ ] 지식 기여 폼 만들기
+
+### Day 3 (예정)
+- [ ] 그래프 탐색 페이지
+- [ ] 질문하면 답변 나오는 플로우
+- [ ] 기여 영수증 (누구 지식이 쓰였는지 보여주기)
+
+### Day 4 (예정)
+- [ ] 보상 대시보드
+- [ ] 전체 플로우 연결
+- [ ] 모바일에서 안 깨지게 하기
+
+### Day 5 (예정)
+- [ ] 애니메이션 다듬기
+- [ ] 데모 시나리오 연습
+- [ ] 발표 준비
+
+---
+
+## 중간 회고
+
+### 잘한 것
+- **AI 파이프라인 구축**: ChatGPT → Gemini → NotebookLM → Claude Code. 혼자서 3명 몫은 한 것 같다.
+- **기술 스택 선택**: 익숙한 것 위주로 가니까 속도가 난다. Web3 부분만 새로 배우면 됨.
+- **문서 먼저 작성**: Claude Code한테 계획부터 세우게 하니까 삽질이 줄었다.
+
+### 아쉬운 것
+- **테스트 없음**: 해커톤이니까 넘어가지만, 프로덕션이었으면 큰일.
+- **혼자 작업**: 파트너랑 같이 코딩했으면 더 빨랐을 텐데.
+
+### 배운 것
+- Web3가 생각보다 어렵지 않다. 문서만 잘 읽으면 된다.
+- AI 도구들 조합하면 진짜 생산성이 미친다.
+- 해커톤은 "완벽한 것"보다 "돌아가는 것"이 중요하다.
+
+---
+
+## 다음 글에서
+
+Day 2-5의 여정을 계속 기록할 예정이다.
+
+- 실제로 World ID 인증이 되는 순간
+- 데모하다 앱 터지면 어떡하지
+- 발표 3분 전 버그 발견하면?
+
+해커톤 끝나면 회고도 쓸 거다. 우승하면 좋겠지만, 못 해도 배운 게 많으니까.
+
+일단 오늘은 여기까지. 내일도 코딩해야 한다.
+
+---
+
+*계속 업데이트됩니다.*
+
+---
+
+## 부록: 실제 사용한 도구들
+
+| 도구 | 용도 | 한줄 평 |
+|------|------|---------|
+| ChatGPT | 녹음 파일 정리, 초안 작성 | 브레인스토밍 정리에 최고 |
+| Gemini | 자료 수집, 리서치 | 검색 능력이 미쳤다 |
+| NotebookLM | 심층 리서치, Q&A | 1,000개 문서도 거뜬히 소화 |
+| Claude Code | 실제 코딩, 설계 | Plan 모드가 진짜 유용 |
+| Next.js 14 | 프레임워크 | App Router 이제 익숙해짐 |
+| shadcn/ui | UI 컴포넌트 | 해커톤 필수템 |
+| Zustand | 상태 관리 | Redux 지옥에서 해방 |
+| react-force-graph-2d | 그래프 시각화 | 데모 임팩트용 |
+
+---
+
+**GitHub**: [Covalent-Collective/Worldthon](https://github.com/Covalent-Collective/Worldthon)
