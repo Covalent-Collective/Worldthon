@@ -836,4 +836,166 @@ function ExplorerCard({ bot, featured }) {
 
 ---
 
-*Day 4 완료. 내일이 D-day다.*
+## Day 4 (심야): 디자인 통일의 미학
+
+### 자정: Knowledge Graph 대수술
+
+태양계 홈 화면이 완성되고 나니까, 탐색 페이지의 Knowledge Graph가 눈에 거슬렸다.
+
+> "이거 왜 혼자 다른 세계에서 온 것 같지?"
+
+맞다. 홈 화면은 어두운 우주 테마인데, 그래프는 밝은 하늘색 배경이었다. 디자인 언어가 안 맞았다.
+
+### 새벽 1시: 브루탈리스트 실험
+
+처음엔 브루탈리스트 디자인을 시도했다. 나눔명조 폰트에 다크 브라운 배경, 라임/크림/골드 색상 팔레트.
+
+```css
+--graph-bg: #3D2B1F;      /* 다크 브라운 */
+--graph-lime: #D4E157;    /* 라임 */
+--graph-cream: #FFFDE7;   /* 크림 */
+--graph-gold: #C9A227;    /* 골드 */
+```
+
+폰트 파일까지 다운받아서 적용했는데...
+
+> "야, 나눔명조는 진짜 별로다."
+
+바로 롤백. 해커톤에서 디자인 논쟁할 시간이 없다.
+
+### 새벽 2시: 통일된 우주 테마
+
+결국 답은 간단했다. **홈 화면 스타일을 그대로 가져오자.**
+
+**배경 통일:**
+```tsx
+// Before: 밝은 하늘색
+<div className="bg-gradient-to-br from-white via-sky-50 to-cyan-50">
+
+// After: 홈 화면과 동일
+<div className="bg-gradient-to-b from-night via-permafrost to-night">
+```
+
+**노드 색상 통일:**
+```typescript
+// Before: 66days 스타일 파스텔
+const GRADIENT_SETS = [
+  { from: '#667eea', to: '#764ba2' },
+  { from: '#f093fb', to: '#f5576c' },
+  // ...
+]
+
+// After: Aurora 테마
+const NODE_COLORS = {
+  cyan: { from: '#00F2FF', to: '#00D4E0' },
+  violet: { from: '#667EEA', to: '#5A6FD1' },
+  purple: { from: '#8B5CF6', to: '#7C4FE0' },
+  pink: { from: '#EC4899', to: '#D43D89' },
+  blue: { from: '#3B82F6', to: '#2970E0' },
+}
+```
+
+**Border Radius 통일:**
+```tsx
+// Before: 브루탈리스트 (각진 모서리)
+style={{ borderRadius: 0 }}
+
+// After: 다른 카드와 동일
+className="rounded-2xl"
+```
+
+### 새벽 2시 30분: 줌 레벨 최적화
+
+그래프가 처음에 너무 확대되어 있어서 전체 노드가 안 보였다.
+
+```typescript
+// 초기 줌아웃
+useEffect(() => {
+  if (graphRef.current) {
+    setTimeout(() => {
+      graphRef.current?.zoomToFit(200, 80)
+    }, 100)
+  }
+}, [graphData])
+```
+
+`zoomToFit`의 두 번째 파라미터가 패딩이다. 80으로 설정하니까 여유 있게 전체가 보인다.
+
+### 쉘이 죽었다
+
+중간에 웃픈 일이 있었다. fonts 폴더를 삭제했는데, 그 폴더 안에서 작업 중이었다.
+
+```bash
+rm -rf /Users/jyong/seed-vault-mvp/public/fonts/*.ttf
+# 이후 모든 bash 명령어 실패
+# Exit code 1, 출력 없음
+```
+
+현재 작업 디렉토리가 삭제되면 쉘 세션이 죽는다. 해결책:
+
+```typescript
+// 폴더 다시 생성
+Write({ file_path: '/Users/jyong/.../fonts/.gitkeep', content: '' })
+// 쉘 복구됨
+```
+
+`.gitkeep` 파일 하나 만들어서 폴더 복구하니까 쉘이 다시 살아났다. 삽질 10분.
+
+---
+
+## Day 4 심야 결과
+
+- Knowledge Graph 배경: 홈 화면과 통일
+- 노드 색상: Aurora 테마 (cyan, violet, purple, pink, blue)
+- 링크 색상: Arctic 색상 계열
+- Border radius: `rounded-2xl` 통일
+- 초기 줌: 전체 노드 보이도록 축소
+
+**커밋**: `style: Unify KnowledgeGraph with home screen design`
+
+---
+
+## 디자인 시스템 정리
+
+### 색상 팔레트 (최종)
+
+| 용도 | 색상 | Hex |
+|------|------|-----|
+| 배경 (night) | 검정에 가까운 남색 | `#0A0A0F` |
+| 배경 (permafrost) | 약간 밝은 검정 | `#12121A` |
+| 텍스트 (arctic) | 밝은 라벤더 | `#E0E7FF` |
+| 강조 (aurora-cyan) | 네온 시안 | `#00F2FF` |
+| 강조 (aurora-violet) | 바이올렛 | `#667EEA` |
+
+### 컴포넌트 스타일
+
+| 요소 | 스타일 |
+|------|--------|
+| 카드 | `glass-card rounded-2xl` |
+| 버튼 (Primary) | `bg-gradient-to-r from-aurora-cyan to-aurora-violet` |
+| 버튼 (Secondary) | `glass rounded-xl` |
+| 입력 필드 | `bg-white/5 border-white/10 rounded-xl` |
+
+### 애니메이션
+
+| 이름 | 용도 | 속도 |
+|------|------|------|
+| `orbit` | 공전 | 30-60s |
+| `spin` | 단순 회전 | 10s |
+| `pulse` | 글로우 효과 | 2-4s |
+| `twinkle` | 별 반짝임 | 2-5s |
+
+---
+
+## 남은 것들
+
+### Day 5 (D-day)
+- [ ] World ID 실제 연동 테스트
+- [ ] Vercel 프로덕션 배포
+- [ ] 데모 시나리오 최종 점검
+- [ ] 발표 리허설
+- [ ] 최종 버그 픽스
+
+---
+
+*Day 4 심야 세션 완료. 이제 진짜 자야겠다.*
