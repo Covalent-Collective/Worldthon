@@ -630,3 +630,210 @@ rm -rf .next && npm run dev
 ---
 
 *Day 3 완료. 내일은 배포다.*
+
+---
+
+## Day 4: 태양계를 만들다 — 궤도 애니메이션과 UI 대수술
+
+### 아침: "네트워크가 좀 밋밋해"
+
+파트너가 홈 화면을 보더니 말했다.
+
+> "이거 그냥 점들 떠있는 거잖아. 뭔가 움직이는 느낌이 없어."
+
+맞는 말이다. 노드들이 정적으로 배치되어 있으니까 "살아있는 네트워크" 느낌이 안 났다.
+
+아이디어가 떠올랐다. **태양계**. 내가 중심이고, 전문가 봇들이 주위를 공전하는 거다.
+
+### 오전: CSS 궤도 역학
+
+물리 엔진 쓸까 하다가 그냥 CSS로 하기로 했다. 해커톤이니까 심플하게.
+
+**3개의 궤도 링 설계:**
+
+```typescript
+const orbits = [
+  { radius: 90, duration: 30, bots: [] },   // 내부 궤도: 30초
+  { radius: 140, duration: 45, bots: [] },  // 중간 궤도: 45초
+  { radius: 185, duration: 60, bots: [] },  // 외부 궤도: 60초
+]
+
+// 봇들을 궤도에 분배
+expertBots.forEach((bot, index) => {
+  orbits[index % 3].bots.push(bot)
+})
+```
+
+각 궤도마다 속도가 다르다. 케플러 법칙처럼 바깥 궤도가 더 느리게.
+
+**핵심 CSS 애니메이션:**
+
+```css
+@keyframes orbit {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes counter-orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+```
+
+여기서 중요한 게 `counter-orbit`이다.
+
+### 오전: 회전하는 노드 문제
+
+처음 만들었을 때 노드들이 공전하면서 **자기도 같이 회전**했다. 아이콘이 빙글빙글 돌아가니까 어지럽다.
+
+해결책: **counter-rotation**
+
+```tsx
+<div style={{ animation: `orbit ${duration}s linear infinite` }}>
+  {bots.map(bot => (
+    <div style={{
+      left: Math.cos(angle) * radius,
+      top: Math.sin(angle) * radius
+    }}>
+      {/* 부모가 시계방향 회전하면, 자식은 반시계방향으로 상쇄 */}
+      <div style={{ animation: `counter-orbit ${duration}s linear infinite` }}>
+        {bot.icon}
+      </div>
+    </div>
+  ))}
+</div>
+```
+
+부모 컨테이너가 회전하면 자식도 따라 회전하는데, 자식한테 반대 방향 회전을 줘서 상쇄시키는 거다. 결과적으로 노드는 **공전은 하지만 자전은 안 한다**.
+
+처음엔 `rotate(angleOffset)deg`로 위치를 잡았는데 이것도 회전값이 들어가서 문제였다. 결국 `cos/sin`으로 x/y 좌표를 직접 계산해서 **회전값 완전 제거**.
+
+### 오후: 클릭이 안 돼요
+
+태양계 완성! 했는데 내부 궤도 노드들이 클릭이 안 된다.
+
+원인: 중앙 노드의 **코로나 이펙트**가 너무 컸다.
+
+```tsx
+{/* 이게 문제 */}
+<div className="scale-[3] blur-3xl" />  // 3배 확대 = 240px 직경
+```
+
+80px 노드에 `scale-[3]`이면 240px가 된다. 내부 궤도가 90px인데 코로나가 120px까지 뻗으니까 클릭을 막는 거다.
+
+해결:
+
+```tsx
+{/* 글로우 레이어에 pointer-events-none 추가 */}
+<div className="scale-[3] blur-3xl pointer-events-none" />
+```
+
+그리고 z-index도 조정. 중앙 노드는 `z-10`, 봇 노드들은 `z-20`.
+
+### 저녁: 점선 링이 삐뚤어요
+
+중앙 노드 주변에 점선으로 회전하는 링을 넣었는데, 영점이 안 맞았다.
+
+원인: `orbit` 애니메이션에 `translate(-50%, -50%)`가 들어있는데, 이미 위치가 잡힌 요소한테 또 translate를 주니까 이중으로 밀리는 거다.
+
+해결: Tailwind 기본 제공 `spin` 애니메이션 사용. 이건 순수 회전만 한다.
+
+```tsx
+{/* orbit 대신 spin 사용 */}
+<div
+  className="absolute -inset-3 border-dashed"
+  style={{ animation: 'spin 10s linear infinite' }}
+/>
+```
+
+### 밤: 탐색 페이지 리뉴얼
+
+홈이 이뻐지니까 탐색 페이지가 초라해 보였다. 카드 UI로 전면 개편.
+
+**변경 사항:**
+- 리스트 뷰 → 카드 캐러셀
+- 트렌딩 봇 피처드 섹션 추가
+- VAULT-XXX 시리얼 넘버 (Svalbard 감성)
+- 카테고리별 가로 스크롤
+
+```tsx
+function ExplorerCard({ bot, featured }) {
+  return (
+    <div className={featured ? 'w-full' : 'w-[280px]'}>
+      {/* 시리얼 넘버 */}
+      <span className="font-mono text-[9px]">
+        VAULT-{bot.id.slice(0, 3).toUpperCase()}
+      </span>
+      {/* 프로필 */}
+      <div className="w-20 h-20 rounded-full bg-white/10">
+        {bot.icon}
+      </div>
+      {/* 스탯 */}
+      <div>{bot.nodeCount} nodes • {bot.contributorCount} contributors</div>
+    </div>
+  )
+}
+```
+
+### Day 4 결과
+
+- 태양계 스타일 홈 화면 완성
+- 3단 궤도 시스템 (30s/45s/60s)
+- counter-rotation으로 노드 회전 제거
+- 클릭 영역 버그 수정 (pointer-events-none)
+- 탐색 페이지 카드 캐러셀 UI
+- 보상 페이지 터미널 스타일 로그
+
+**변경**: 11개 파일, +2,812 / -393 lines
+
+---
+
+## Day 4 기술 정리
+
+### CSS 애니메이션 키프레임
+
+| 애니메이션 | 용도 |
+|-----------|------|
+| `orbit` | 공전 (translate + rotate) |
+| `counter-orbit` | 역회전 (노드 똑바로 유지) |
+| `twinkle` | 별 반짝임 |
+| `float` | 부유 효과 |
+| `shooting-star` | 유성 |
+
+### 태양계 구조
+
+```
+[중앙 노드]
+    ├── 코로나 레이어 (pointer-events-none)
+    │   ├── blur-3xl scale-[3]
+    │   ├── blur-2xl scale-[2]
+    │   └── blur-xl scale-150
+    ├── 코어 (w-10 h-10)
+    └── 점선 링 (spin 10s)
+
+[궤도 컨테이너] × 3
+    └── 봇 노드들
+        └── counter-orbit 래퍼
+            └── 실제 노드 UI
+```
+
+### 배운 것들
+
+1. **CSS 회전의 상속**: 부모가 회전하면 자식도 같이 돈다. 상쇄하려면 역방향 회전 필요.
+2. **pointer-events-none**: 글로우/블러 이펙트는 시각적으로만 존재해야 할 때 필수.
+3. **z-index 관리**: 레이어가 많아지면 명시적으로 관리 안 하면 클릭 버그 생긴다.
+4. **translate vs position**: 이미 위치 잡힌 요소에 translate 애니메이션 쓰면 이중 이동 주의.
+
+---
+
+## 남은 것들
+
+### Day 5 (최종)
+- [ ] World ID 실제 연동 테스트
+- [ ] Vercel 프로덕션 배포
+- [ ] 데모 시나리오 최종 점검
+- [ ] 발표 리허설
+
+---
+
+*Day 4 완료. 내일이 D-day다.*
