@@ -1,24 +1,43 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { getBotById, generateMockAnswer, calculateContribution } from '@/lib/mock-data'
+import { getBotWithContributions, generateMockAnswer, calculateContribution } from '@/lib/mock-data'
 import { KnowledgeGraph } from '@/components/KnowledgeGraph'
 import { BottomNav } from '@/components/BottomNav'
+import { useCitationStore } from '@/stores/citationStore'
+import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import type { KnowledgeNode } from '@/lib/types'
 
 export default function ExplorePage() {
   const params = useParams()
   const botId = params.botId as string
-  const bot = getBotById(botId)
+
+  // Get user-contributed nodes from the knowledge store
+  const getNodesForBot = useKnowledgeStore((state) => state.getNodesForBot)
+  const getEdgesForBot = useKnowledgeStore((state) => state.getEdgesForBot)
+
+  // Merge base bot data with user contributions
+  const contributedNodes = getNodesForBot(botId)
+  const contributedEdges = getEdgesForBot(botId)
+  const bot = useMemo(
+    () => getBotWithContributions(botId, contributedNodes, contributedEdges),
+    [botId, contributedNodes, contributedEdges]
+  )
 
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState<string | null>(null)
   const [highlightedNodes, setHighlightedNodes] = useState<string[]>([])
+  const [recentlyCitedNodes, setRecentlyCitedNodes] = useState<string[]>([])
   const [contributions, setContributions] = useState<{ contributor: string; percentage: number }[]>([])
   const [selectedNode, setSelectedNode] = useState<KnowledgeNode | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [confidence, setConfidence] = useState<number>(0)
+  const [matchedTerms, setMatchedTerms] = useState<string[]>([])
+
+  const recordCitation = useCitationStore((state) => state.recordCitation)
+  const getCitationCount = useCitationStore((state) => state.getCitationCount)
 
   if (!bot) {
     return (
@@ -42,6 +61,17 @@ export default function ExplorePage() {
     const result = generateMockAnswer(question, bot)
     setAnswer(result.answer)
     setHighlightedNodes(result.usedNodes)
+    setConfidence(result.confidence)
+    setMatchedTerms(result.matchedTerms)
+
+    // Record citations for the used nodes - this is the key feature!
+    recordCitation(result.usedNodes)
+    setRecentlyCitedNodes(result.usedNodes)
+
+    // Clear recently cited indicator after animation
+    setTimeout(() => {
+      setRecentlyCitedNodes([])
+    }, 3000)
 
     const receipts = calculateContribution(result.usedNodes, bot.graph.nodes)
     setContributions(receipts)
@@ -96,6 +126,7 @@ export default function ExplorePage() {
           bot={bot}
           highlightedNodes={highlightedNodes}
           onNodeClick={handleNodeClick}
+          recentlyCitedNodes={recentlyCitedNodes}
         />
       </div>
 
@@ -114,6 +145,39 @@ export default function ExplorePage() {
         <div className="px-4 py-3 space-y-3">
           {/* Answer Bubble */}
           <div className="bg-gray-50 rounded-xl p-4">
+            {/* Confidence Indicator */}
+            {confidence > 0 && (
+              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-200">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-gray-500">신뢰도</span>
+                  <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                    <div
+                      className={`h-1.5 rounded-full ${
+                        confidence >= 70 ? 'bg-green-500' :
+                        confidence >= 40 ? 'bg-yellow-500' : 'bg-red-400'
+                      }`}
+                      style={{ width: `${confidence}%` }}
+                    />
+                  </div>
+                  <span className={`text-xs font-medium ${
+                    confidence >= 70 ? 'text-green-600' :
+                    confidence >= 40 ? 'text-yellow-600' : 'text-red-500'
+                  }`}>
+                    {confidence}%
+                  </span>
+                </div>
+                {matchedTerms.length > 0 && (
+                  <div className="flex items-center gap-1 ml-auto">
+                    <span className="text-xs text-gray-400">매칭:</span>
+                    {matchedTerms.slice(0, 3).map((term, i) => (
+                      <span key={i} className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                        {term}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <p className="text-sm text-gray-700 whitespace-pre-line">{answer}</p>
           </div>
 
@@ -151,7 +215,7 @@ export default function ExplorePage() {
             <h3 className="font-semibold mb-2">{selectedNode.label}</h3>
             <p className="text-sm text-gray-600 mb-3">{selectedNode.content}</p>
             <div className="flex items-center justify-between text-xs text-gray-400">
-              <span>인용 {selectedNode.citationCount}회</span>
+              <span>인용 {getCitationCount(selectedNode.id, selectedNode.citationCount)}회</span>
               <span>{selectedNode.contributor}</span>
             </div>
           </div>

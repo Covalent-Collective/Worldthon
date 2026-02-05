@@ -1,13 +1,23 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useUserStore } from '@/stores/userStore'
+import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { expertBots } from '@/lib/mock-data'
 
 export default function LandingPage() {
   const { isVerified, globalStats } = useUserStore()
+  const getTotalContributedNodes = useKnowledgeStore((state) => state.getTotalContributedNodes)
   const [mounted, setMounted] = useState(false)
+
+  // Calculate real total nodes: base nodes + user contributions
+  const totalContributedNodes = getTotalContributedNodes()
+  const baseNodeCount = expertBots.reduce((sum, bot) => sum + bot.graph.nodes.length, 0)
+  const realTotalNodes = useMemo(
+    () => baseNodeCount + totalContributedNodes,
+    [baseNodeCount, totalContributedNodes]
+  )
 
   useEffect(() => {
     setMounted(true)
@@ -59,7 +69,7 @@ export default function LandingPage() {
         </p>
 
         <div className="flex gap-4 pt-8">
-          <StatCard label="노드" value={globalStats.totalNodes} />
+          <StatCard label="노드" value={realTotalNodes} />
           <StatCard label="기여자" value={globalStats.totalContributors} />
           <StatCard label="봇" value={globalStats.totalBots} />
         </div>
@@ -128,6 +138,13 @@ function MarketplacePage() {
 }
 
 function BotCard({ bot }: { bot: typeof expertBots[0] }) {
+  // Get contribution count for this specific bot
+  const getContributionCount = useKnowledgeStore((state) => state.getContributionCount)
+  const contributionCount = getContributionCount(bot.id)
+
+  // Calculate total node count: base nodes + user contributions
+  const totalNodes = bot.graph.nodes.length + contributionCount
+
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
       <div className="flex gap-4">
@@ -136,7 +153,10 @@ function BotCard({ bot }: { bot: typeof expertBots[0] }) {
           <h3 className="font-semibold text-base">{bot.name}</h3>
           <p className="text-gray-500 text-sm truncate">{bot.description}</p>
           <p className="text-gray-400 text-xs mt-1">
-            {bot.nodeCount} 노드 • {bot.contributorCount} 기여자
+            {totalNodes} 노드 • {bot.contributorCount} 기여자
+            {contributionCount > 0 && (
+              <span className="text-green-600 ml-1">(+{contributionCount} 내 기여)</span>
+            )}
           </p>
         </div>
       </div>

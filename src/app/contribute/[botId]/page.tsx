@@ -5,7 +5,9 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getBotById } from '@/lib/mock-data'
 import { useUserStore } from '@/stores/userStore'
+import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { VerifyButton } from '@/components/VerifyButton'
+import type { KnowledgeNode } from '@/lib/types'
 
 export default function ContributePage() {
   const params = useParams()
@@ -13,11 +15,15 @@ export default function ContributePage() {
   const botId = params.botId as string
   const bot = getBotById(botId)
 
-  const { isVerified, addContribution } = useUserStore()
+  const { isVerified, nullifierHash, addContribution } = useUserStore()
+  const { addNode, getContributionCount } = useKnowledgeStore()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+
+  // Get current contribution count for this bot
+  const contributionCount = getContributionCount(botId)
 
   if (!bot) {
     return (
@@ -33,21 +39,27 @@ export default function ContributePage() {
 
     setIsSubmitting(true)
 
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    try {
+      // Add contribution via userStore (handles both Supabase and local modes)
+      const nodeId = await addContribution(botId, title, content)
 
-    // Add to store
-    addContribution(botId, {
-      id: `node-${Date.now()}`,
-      label: title,
-      content,
-      contributor: '0xnew...anon',
-      createdAt: new Date().toISOString().split('T')[0],
-      citationCount: 0
-    })
+      // Also add to knowledge store for local graph display
+      const newNode: KnowledgeNode = {
+        id: nodeId,
+        label: title,
+        content,
+        contributor: nullifierHash || '0xnew...anon',
+        createdAt: new Date().toISOString().split('T')[0],
+        citationCount: 0
+      }
+      addNode(botId, newNode)
 
-    setIsSubmitting(false)
-    setShowSuccess(true)
+      setShowSuccess(true)
+    } catch (error) {
+      console.error('Failed to add contribution:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (showSuccess) {
@@ -103,13 +115,21 @@ export default function ContributePage() {
             다른 사용자가 인용할 때마다 WLD를 받게 됩니다
           </p>
 
-          {/* Confirm button */}
-          <button
-            onClick={() => router.push('/')}
-            className="w-full py-4 bg-black text-white rounded-full font-medium hover:bg-gray-800 transition-all active:scale-95"
-          >
-            확인
-          </button>
+          {/* Action buttons */}
+          <div className="space-y-2">
+            <button
+              onClick={() => router.push(`/explore/${botId}`)}
+              className="w-full py-4 bg-black text-white rounded-full font-medium hover:bg-gray-800 transition-all active:scale-95"
+            >
+              그래프에서 보기
+            </button>
+            <button
+              onClick={() => router.push('/')}
+              className="w-full py-3 text-gray-500 font-medium hover:text-gray-700 transition-all"
+            >
+              홈으로
+            </button>
+          </div>
         </div>
 
         {/* Custom keyframe animations */}
@@ -256,7 +276,12 @@ export default function ContributePage() {
             <span className="text-2xl">{bot.icon}</span>
             <div>
               <p className="font-medium">{bot.name}</p>
-              <p className="text-sm text-gray-500">{bot.nodeCount} 노드 • {bot.contributorCount} 기여자</p>
+              <p className="text-sm text-gray-500">
+                {bot.graph.nodes.length + contributionCount} 노드 • {bot.contributorCount} 기여자
+                {contributionCount > 0 && (
+                  <span className="text-green-600 ml-1">(+{contributionCount} 내 기여)</span>
+                )}
+              </p>
             </div>
           </div>
         </div>
