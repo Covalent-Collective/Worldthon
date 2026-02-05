@@ -40,6 +40,21 @@
     --glow-cyan-rgb: 0, 242, 255;
     --glow-violet-rgb: 139, 92, 246;
     --glow-green-rgb: 34, 197, 94;
+
+    /* Brutalist Graph Colors */
+    --graph-bg: #3D2B1F;
+    --graph-lime: #D4E157;
+    --graph-cream: #FFFDE7;
+    --graph-gold: #C9A227;
+    --graph-muted: rgba(255, 253, 231, 0.7);
+    --graph-hairline: rgba(255, 253, 231, 0.16);
+
+    /* Node Type Colors */
+    --node-keyword: #D4E157;
+    --node-person: #FFB4B4;
+    --node-org: #B4DCFF;
+    --node-location: #B4FFB4;
+    --node-concept: #DCB4FF;
   }
 }
 

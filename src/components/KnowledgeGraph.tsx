@@ -144,14 +144,22 @@ function WaveOverlay({ width, height, waveTime }: WaveOverlayProps) {
   )
 }
 
-// 66days style gradient colors
-const GRADIENT_SETS = [
-  { from: '#667eea', to: '#764ba2' }, // purple-violet
-  { from: '#f093fb', to: '#f5576c' }, // pink-red
-  { from: '#4facfe', to: '#00f2fe' }, // blue-cyan
-  { from: '#43e97b', to: '#38f9d7' }, // green-teal
-  { from: '#fa709a', to: '#fee140' }, // pink-yellow
-  { from: '#a8edea', to: '#fed6e3' }, // teal-pink
+// Aurora style node colors matching home screen
+const NODE_COLORS = {
+  cyan: { from: '#00F2FF', to: '#00D4E0' },      // aurora cyan
+  violet: { from: '#667EEA', to: '#5A6FD1' },    // aurora violet
+  purple: { from: '#8B5CF6', to: '#7C4FE0' },    // purple
+  pink: { from: '#EC4899', to: '#D43D89' },      // pink
+  blue: { from: '#3B82F6', to: '#2970E0' },      // blue
+}
+
+// Color cycle for nodes
+const COLOR_CYCLE = [
+  NODE_COLORS.cyan,
+  NODE_COLORS.violet,
+  NODE_COLORS.purple,
+  NODE_COLORS.pink,
+  NODE_COLORS.blue,
 ]
 
 export function KnowledgeGraph({
@@ -178,8 +186,8 @@ export function KnowledgeGraph({
   // Zoom out to fit all nodes after graph stabilizes
   useEffect(() => {
     if (graphRef.current && isStabilized) {
-      // Zoom to fit with some padding
-      graphRef.current.zoomToFit(400, 60)
+      // Zoom to fit all nodes with generous padding
+      graphRef.current.zoomToFit(400, 100)
     }
   }, [isStabilized])
 
@@ -231,7 +239,7 @@ export function KnowledgeGraph({
         val: 6,
         node,
         citationCount: realCitationCount,
-        colorIndex: index % GRADIENT_SETS.length
+        colorIndex: index % COLOR_CYCLE.length
       }
     }),
     links: bot.graph.edges.map(edge => ({
@@ -242,17 +250,41 @@ export function KnowledgeGraph({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [bot.id, bot.graph.nodes.length, bot.graph.edges.length])
 
+  // Initial zoom out on data change
+  useEffect(() => {
+    if (graphRef.current) {
+      setTimeout(() => {
+        graphRef.current?.zoomToFit(200, 80)
+      }, 100)
+    }
+  }, [graphData])
+
   const handleNodeClick = useCallback((node: object) => {
     if (onNodeClick) onNodeClick((node as GraphNode).node)
   }, [onNodeClick])
 
   return (
-    <div ref={containerRef} className="relative w-full rounded-3xl overflow-hidden">
-      {/* Light background with subtle blue tint */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white via-sky-50 to-cyan-50">
-        <div className="absolute inset-0 bg-gradient-to-br from-sky-100/30 via-transparent to-cyan-100/30" />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-sky-200/40 rounded-full blur-[100px]" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-200/30 rounded-full blur-[100px]" />
+    <div ref={containerRef} className="relative w-full overflow-hidden rounded-2xl">
+      {/* Background matching home screen */}
+      <div className="absolute inset-0 bg-gradient-to-b from-night via-permafrost to-night">
+        {/* Radial gradient overlays */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `
+              radial-gradient(600px circle at 20% 0%, rgba(0, 242, 255, 0.06), transparent 55%),
+              radial-gradient(500px circle at 85% 80%, rgba(102, 126, 234, 0.05), transparent 60%)
+            `
+          }}
+        />
+        {/* Dot pattern overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.03]"
+          style={{
+            backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.5) 1px, transparent 1px)',
+            backgroundSize: '30px 30px'
+          }}
+        />
       </div>
 
       {/* Central Wave Overlay for Search Phase */}
@@ -274,7 +306,7 @@ export function KnowledgeGraph({
           backgroundColor="transparent"
           nodeLabel=""
           nodeRelSize={1}
-          linkColor={() => 'rgba(56, 189, 248, 0.3)'}
+          linkColor={() => 'rgba(102, 126, 234, 0.25)'}
           linkWidth={1}
           linkCurvature={0.25}
           onNodeClick={handleNodeClick}
@@ -289,7 +321,7 @@ export function KnowledgeGraph({
           nodeVal={10}
           enableZoomInteraction={true}
           enablePanInteraction={true}
-          minZoom={0.3}
+          minZoom={0.2}
           maxZoom={3}
           nodeCanvasObjectMode={() => 'replace'}
           nodeCanvasObject={(node: object, ctx: CanvasRenderingContext2D, globalScale: number) => {
@@ -301,7 +333,7 @@ export function KnowledgeGraph({
             const isRecentlyCited = recentlyCitedNodes.includes(n.id)
             const isHovered = hoverNode === n.id
             const isFoundNode = foundNodeIds.includes(n.id)
-            const colors = GRADIENT_SETS[n.colorIndex]
+            const colors = COLOR_CYCLE[n.colorIndex]
 
             // Calculate distance from center for wave effect
             const distFromCenter = Math.sqrt(x * x + y * y)
@@ -449,12 +481,12 @@ export function KnowledgeGraph({
             ctx.textAlign = 'center'
             ctx.textBaseline = 'top'
 
-            // Text shadow for readability on light background
-            ctx.shadowColor = 'rgba(255,255,255,0.9)'
-            ctx.shadowBlur = 3
+            // Text shadow for readability on dark background
+            ctx.shadowColor = 'rgba(0,0,0,0.8)'
+            ctx.shadowBlur = 2
             ctx.fillStyle = isHighlighted || isRecentlyCited || isHovered || isFoundNode
-              ? '#1e293b'
-              : '#475569'
+              ? '#E0E7FF'
+              : 'rgba(224, 231, 255, 0.6)'
             ctx.fillText(label, x, y + radius + 6)
             ctx.shadowBlur = 0
 
@@ -544,23 +576,23 @@ export function KnowledgeGraph({
             // Gradient stroke
             const grad = ctx.createLinearGradient(sx, sy, tx, ty)
             if (isFoundLink && (searchPhase === 'found' || searchPhase === 'complete')) {
-              // Bright purple for found connections
+              // Bright cyan for found connections
               const intensity = searchPhase === 'complete' ? 0.9 : 0.6
-              grad.addColorStop(0, `rgba(167, 139, 250, ${intensity})`)
-              grad.addColorStop(0.5, `rgba(139, 92, 246, ${intensity * 0.8})`)
-              grad.addColorStop(1, `rgba(167, 139, 250, ${intensity})`)
+              grad.addColorStop(0, `rgba(0, 242, 255, ${intensity})`)
+              grad.addColorStop(0.5, `rgba(102, 126, 234, ${intensity * 0.8})`)
+              grad.addColorStop(1, `rgba(0, 242, 255, ${intensity})`)
 
               // Add glow effect for complete phase
               if (searchPhase === 'complete') {
-                ctx.shadowColor = 'rgba(139, 92, 246, 0.8)'
+                ctx.shadowColor = 'rgba(0, 242, 255, 0.8)'
                 ctx.shadowBlur = 8
               }
             } else {
               const baseIntensity = 0.3 * linkBrightness
               const midIntensity = 0.15 * linkBrightness
-              grad.addColorStop(0, `rgba(139, 92, 246, ${Math.min(1, baseIntensity)})`)
+              grad.addColorStop(0, `rgba(102, 126, 234, ${Math.min(1, baseIntensity)})`)
               grad.addColorStop(0.5, `rgba(139, 92, 246, ${Math.min(1, midIntensity)})`)
-              grad.addColorStop(1, `rgba(139, 92, 246, ${Math.min(1, baseIntensity)})`)
+              grad.addColorStop(1, `rgba(102, 126, 234, ${Math.min(1, baseIntensity)})`)
             }
 
             ctx.beginPath()
@@ -582,19 +614,19 @@ export function KnowledgeGraph({
             ctx.lineTo(tx - aLen * Math.cos(angle + Math.PI/6), ty - aLen * Math.sin(angle + Math.PI/6))
             ctx.closePath()
             ctx.fillStyle = isFoundLink && (searchPhase === 'found' || searchPhase === 'complete')
-              ? 'rgba(167, 139, 250, 0.9)'
-              : 'rgba(139, 92, 246, 0.5)'
+              ? 'rgba(0, 242, 255, 0.9)'
+              : 'rgba(102, 126, 234, 0.4)'
             ctx.fill()
 
             // Edge label
             const dist = Math.sqrt(dx*dx + dy*dy)
             if (l.label && dist > 80) {
-              ctx.font = '9px "Pretendard", sans-serif'
+              ctx.font = '7px "Pretendard", sans-serif'
               ctx.textAlign = 'center'
               ctx.textBaseline = 'middle'
               ctx.fillStyle = isFoundLink && (searchPhase === 'found' || searchPhase === 'complete')
-                ? 'rgba(167, 139, 250, 1)'
-                : 'rgba(167, 139, 250, 0.6)'
+                ? 'rgba(0, 242, 255, 1)'
+                : 'rgba(224, 231, 255, 0.5)'
               ctx.fillText(l.label, cx, cy)
             }
 
@@ -606,7 +638,7 @@ export function KnowledgeGraph({
       </div>
 
       {/* Bottom fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent pointer-events-none z-20" />
+      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-night to-transparent pointer-events-none z-20" />
     </div>
   )
 }
