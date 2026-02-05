@@ -1,20 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useUserStore } from '@/stores/userStore'
 import { expertBots } from '@/lib/mock-data'
 
 export default function LandingPage() {
-  const { isVerified } = useUserStore()
+  const { isVerified, globalStats } = useUserStore()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
-
-  const totalNodes = expertBots.reduce((sum, bot) => sum + bot.nodeCount, 0)
-  const totalContributors = expertBots.reduce((sum, bot) => sum + bot.contributorCount, 0)
 
   if (!mounted) {
     return null
@@ -62,9 +59,9 @@ export default function LandingPage() {
         </p>
 
         <div className="flex gap-4 pt-8">
-          <StatCard label="노드" value={totalNodes} />
-          <StatCard label="기여자" value={totalContributors} />
-          <StatCard label="봇" value={expertBots.length} />
+          <StatCard label="노드" value={globalStats.totalNodes} />
+          <StatCard label="기여자" value={globalStats.totalContributors} />
+          <StatCard label="봇" value={globalStats.totalBots} />
         </div>
       </div>
     </main>
@@ -72,9 +69,29 @@ export default function LandingPage() {
 }
 
 function StatCard({ label, value }: { label: string; value: number }) {
+  const [isAnimating, setIsAnimating] = useState(false)
+  const prevValueRef = useRef(value)
+
+  useEffect(() => {
+    if (prevValueRef.current !== value) {
+      setIsAnimating(true)
+      prevValueRef.current = value
+      const timer = setTimeout(() => setIsAnimating(false), 600)
+      return () => clearTimeout(timer)
+    }
+  }, [value])
+
   return (
     <div className="bg-gray-50 rounded-xl px-5 py-3 text-center">
-      <div className="text-xl font-bold">{value}</div>
+      <div
+        className={`text-xl font-bold transition-all duration-300 ${
+          isAnimating
+            ? 'scale-125 text-green-600'
+            : 'scale-100 text-black'
+        }`}
+      >
+        {value}
+      </div>
       <div className="text-xs text-gray-500">{label}</div>
     </div>
   )

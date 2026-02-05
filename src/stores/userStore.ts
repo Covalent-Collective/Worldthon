@@ -2,20 +2,28 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { UserRewards, KnowledgeNode } from '@/lib/types'
 
+interface GlobalStats {
+  totalNodes: number
+  totalContributors: number
+  totalBots: number
+}
+
 interface UserState {
   isVerified: boolean
   nullifierHash: string | null
   rewards: UserRewards
+  globalStats: GlobalStats
   setVerified: (verified: boolean, nullifierHash?: string) => void
   addContribution: (botId: string, node: KnowledgeNode) => void
   incrementCitations: (count: number) => void
+  incrementGlobalNodes: () => void
   claimRewards: () => void
   logout: () => void
 }
 
 export const useUserStore = create<UserState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       isVerified: false,
       nullifierHash: null,
       rewards: {
@@ -24,26 +32,43 @@ export const useUserStore = create<UserState>()(
         pendingWLD: 0,
         contributions: []
       },
+      globalStats: {
+        totalNodes: 174,
+        totalContributors: 58,
+        totalBots: 4
+      },
 
       setVerified: (verified, nullifierHash) => set({
         isVerified: verified,
         nullifierHash: nullifierHash || null
       }),
 
-      addContribution: (botId, node) => set((state) => ({
-        rewards: {
-          ...state.rewards,
-          contributionPower: Math.min(100, state.rewards.contributionPower + 5),
-          contributions: [
-            ...state.rewards.contributions,
-            {
-              botId,
-              nodeId: node.id,
-              createdAt: new Date().toISOString()
-            }
-          ]
+      incrementGlobalNodes: () => set((state) => ({
+        globalStats: {
+          ...state.globalStats,
+          totalNodes: state.globalStats.totalNodes + 1
         }
       })),
+
+      addContribution: (botId, node) => {
+        // Increment global nodes when a contribution is added
+        get().incrementGlobalNodes()
+
+        set((state) => ({
+          rewards: {
+            ...state.rewards,
+            contributionPower: Math.min(100, state.rewards.contributionPower + 5),
+            contributions: [
+              ...state.rewards.contributions,
+              {
+                botId,
+                nodeId: node.id,
+                createdAt: new Date().toISOString()
+              }
+            ]
+          }
+        }))
+      },
 
       incrementCitations: (count) => set((state) => ({
         rewards: {

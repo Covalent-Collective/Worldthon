@@ -48,38 +48,111 @@ export default function ContributePage() {
 
     setIsSubmitting(false)
     setShowSuccess(true)
-
-    // Redirect after 2 seconds
-    setTimeout(() => {
-      router.push(`/explore/${botId}`)
-    }, 2000)
   }
 
   if (showSuccess) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center px-6 bg-white">
-        <div className="text-center space-y-6">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-            <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+      <main className="min-h-screen fixed inset-0 flex flex-col items-center justify-center px-6 bg-black/90 z-50 animate-fade-in">
+        {/* Confetti particles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute animate-confetti"
+              style={{
+                left: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 2}s`,
+                animationDuration: `${2 + Math.random() * 2}s`,
+              }}
+            >
+              <span className="text-2xl">
+                {['🎉', '✨', '🌟', '💫', '🎊'][Math.floor(Math.random() * 5)]}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Success content card */}
+        <div className="relative bg-white rounded-3xl p-8 mx-4 max-w-sm w-full text-center space-y-6 animate-scale-in shadow-2xl">
+          {/* Celebration emoji */}
+          <div className="text-6xl animate-bounce">
+            🎉
           </div>
 
+          {/* Success message */}
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold">노드 추가 완료!</h1>
+            <h1 className="text-2xl font-bold text-gray-900">지식이 추가되었습니다!</h1>
             <p className="text-gray-500 text-sm">
               당신의 지식이 Seed Vault에<br />영구 보존됩니다
             </p>
           </div>
 
-          <div className="inline-block bg-green-50 text-green-700 px-4 py-2 rounded-full text-sm font-medium">
+          {/* Added node preview */}
+          <div className="bg-gray-50 rounded-xl p-4 text-left">
+            <p className="text-xs text-gray-400 mb-1">추가된 노드</p>
+            <p className="font-medium text-gray-800 truncate">{title}</p>
+          </div>
+
+          {/* Contribution Power indicator */}
+          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 px-5 py-3 rounded-full text-sm font-bold animate-pulse border border-green-200">
+            <span className="text-lg">⚡</span>
             +5 Contribution Power
           </div>
 
           <p className="text-gray-400 text-xs">
             다른 사용자가 인용할 때마다 WLD를 받게 됩니다
           </p>
+
+          {/* Confirm button */}
+          <button
+            onClick={() => router.push('/')}
+            className="w-full py-4 bg-black text-white rounded-full font-medium hover:bg-gray-800 transition-all active:scale-95"
+          >
+            확인
+          </button>
         </div>
+
+        {/* Custom keyframe animations */}
+        <style jsx>{`
+          @keyframes fade-in {
+            from {
+              opacity: 0;
+            }
+            to {
+              opacity: 1;
+            }
+          }
+          @keyframes scale-in {
+            from {
+              opacity: 0;
+              transform: scale(0.8) translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: scale(1) translateY(0);
+            }
+          }
+          @keyframes confetti {
+            0% {
+              transform: translateY(-100%) rotate(0deg);
+              opacity: 1;
+            }
+            100% {
+              transform: translateY(100vh) rotate(720deg);
+              opacity: 0;
+            }
+          }
+          .animate-fade-in {
+            animation: fade-in 0.3s ease-out forwards;
+          }
+          .animate-scale-in {
+            animation: scale-in 0.4s ease-out 0.1s forwards;
+            opacity: 0;
+          }
+          .animate-confetti {
+            animation: confetti 3s ease-in-out infinite;
+          }
+        `}</style>
       </main>
     )
   }
