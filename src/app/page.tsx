@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useUserStore } from '@/stores/userStore'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { expertBots } from '@/lib/mock-data'
+import { BottomNav } from '@/components/BottomNav'
 
 export default function LandingPage() {
   const { isVerified, globalStats } = useUserStore()
@@ -30,7 +31,7 @@ export default function LandingPage() {
   if (isVerified) {
     return (
       <main className="min-h-screen flex flex-col">
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto scrollbar-hide">
           <MarketplacePage />
         </div>
         <BottomNav active="home" />
@@ -40,35 +41,47 @@ export default function LandingPage() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
-      <div className="flex flex-col items-center text-center space-y-8">
-        <div className="text-6xl">🌱</div>
-
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold">Seed Vault</h1>
-          <p className="text-gray-500 text-sm">Human Knowledge Repository</p>
+      <div className="flex flex-col items-center text-center space-y-8 animate-fade-in">
+        {/* Logo with Glow */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-aurora-cyan/20 blur-3xl rounded-full animate-pulse-glow" />
+          <div className="relative text-7xl animate-float">🌱</div>
         </div>
 
-        <p className="text-gray-600 text-sm max-w-[280px]">
+        {/* Title */}
+        <div className="space-y-3">
+          <h1 className="text-4xl font-bold text-arctic">Seed Vault</h1>
+          <p className="text-aurora-cyan/80 text-sm font-mono tracking-wider">
+            HUMAN KNOWLEDGE REPOSITORY
+          </p>
+        </div>
+
+        {/* Description */}
+        <p className="text-arctic/60 text-sm max-w-[280px] leading-relaxed">
           Dead Internet 시대,<br />
-          검증된 인간 지식의 보존소
+          <span className="text-arctic/80">검증된 인간 지식</span>의 보존소
         </p>
 
+        {/* CTA Button */}
         <button
           onClick={() => {
             // Mock verification for demo
             useUserStore.getState().setVerified(true, '0x' + Math.random().toString(16).slice(2, 10) + '...anon')
           }}
-          className="w-full max-w-[280px] bg-black text-white py-4 px-6 rounded-full font-medium flex items-center justify-center gap-3 hover:bg-gray-800 transition-colors"
+          className="w-full max-w-[280px] btn-primary flex items-center justify-center gap-3 py-4 rounded-full"
         >
-          <span className="text-xl">⚫</span>
+          <span className="w-6 h-6 bg-permafrost rounded-full flex items-center justify-center">
+            <span className="w-3 h-3 bg-arctic rounded-full" />
+          </span>
           World ID로 시작하기
         </button>
 
-        <p className="text-gray-400 text-xs">
+        <p className="text-arctic/40 text-xs">
           Orb 인증으로 지식을 기여하고 보상받으세요
         </p>
 
-        <div className="flex gap-4 pt-8">
+        {/* Stats */}
+        <div className="flex gap-3 pt-6">
           <StatCard label="노드" value={realTotalNodes} />
           <StatCard label="기여자" value={globalStats.totalContributors} />
           <StatCard label="봇" value={globalStats.totalBots} />
@@ -92,17 +105,17 @@ function StatCard({ label, value }: { label: string; value: number }) {
   }, [value])
 
   return (
-    <div className="bg-gray-50 rounded-xl px-5 py-3 text-center">
+    <div className="glass-card rounded-2xl px-5 py-3 text-center min-w-[80px]">
       <div
         className={`text-xl font-bold transition-all duration-300 ${
           isAnimating
-            ? 'scale-125 text-green-600'
-            : 'scale-100 text-black'
+            ? 'scale-125 text-aurora-cyan'
+            : 'scale-100 text-arctic'
         }`}
       >
         {value}
       </div>
-      <div className="text-xs text-gray-500">{label}</div>
+      <div className="text-xs text-arctic/50 mt-1">{label}</div>
     </div>
   )
 }
@@ -111,33 +124,38 @@ function MarketplacePage() {
   const { nullifierHash, logout } = useUserStore()
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">전문가 봇</h1>
+    <div className="p-4 space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between pt-2">
+        <div>
+          <h1 className="text-xl font-bold text-arctic">전문가 봇</h1>
+          <p className="text-sm text-arctic/50 mt-0.5">지식 그래프를 탐색하고 기여하세요</p>
+        </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">{nullifierHash?.slice(0, 10)}...</span>
+          <span className="text-xs text-arctic/40 font-mono">{nullifierHash?.slice(0, 10)}...</span>
           <button
             onClick={logout}
-            className="p-2 text-gray-400 hover:text-gray-600"
+            className="p-2 text-arctic/40 hover:text-arctic/70 transition-colors"
             title="로그아웃"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
           </button>
         </div>
       </div>
 
+      {/* Bot Cards */}
       <div className="space-y-3">
-        {expertBots.map(bot => (
-          <BotCard key={bot.id} bot={bot} />
+        {expertBots.map((bot, index) => (
+          <BotCard key={bot.id} bot={bot} index={index} />
         ))}
       </div>
     </div>
   )
 }
 
-function BotCard({ bot }: { bot: typeof expertBots[0] }) {
+function BotCard({ bot, index }: { bot: typeof expertBots[0]; index: number }) {
   // Get contribution count for this specific bot
   const getContributionCount = useKnowledgeStore((state) => state.getContributionCount)
   const contributionCount = getContributionCount(bot.id)
@@ -146,16 +164,19 @@ function BotCard({ bot }: { bot: typeof expertBots[0] }) {
   const totalNodes = bot.graph.nodes.length + contributionCount
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+    <div
+      className="glass-card rounded-2xl p-4 transition-all duration-300 hover:shadow-card-hover animate-slide-up"
+      style={{ animationDelay: `${index * 100}ms` }}
+    >
       <div className="flex gap-4">
         <div className="text-4xl">{bot.icon}</div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-base">{bot.name}</h3>
-          <p className="text-gray-500 text-sm truncate">{bot.description}</p>
-          <p className="text-gray-400 text-xs mt-1">
+          <h3 className="font-semibold text-base text-arctic">{bot.name}</h3>
+          <p className="text-arctic/50 text-sm truncate">{bot.description}</p>
+          <p className="text-arctic/40 text-xs mt-1.5 font-mono">
             {totalNodes} 노드 • {bot.contributorCount} 기여자
             {contributionCount > 0 && (
-              <span className="text-green-600 ml-1">(+{contributionCount} 내 기여)</span>
+              <span className="text-aurora-cyan ml-1">(+{contributionCount})</span>
             )}
           </p>
         </div>
@@ -163,44 +184,17 @@ function BotCard({ bot }: { bot: typeof expertBots[0] }) {
       <div className="flex gap-2 mt-4">
         <Link
           href={`/explore/${bot.id}`}
-          className="flex-1 py-2.5 px-4 text-center text-sm font-medium border border-gray-200 rounded-full hover:bg-gray-50 transition-colors"
+          className="flex-1 py-2.5 px-4 text-center text-sm font-medium glass rounded-xl text-arctic/80 hover:text-arctic hover:bg-white/10 transition-all"
         >
           탐색하기
         </Link>
         <Link
           href={`/contribute/${bot.id}`}
-          className="flex-1 py-2.5 px-4 text-center text-sm font-medium bg-black text-white rounded-full hover:bg-gray-800 transition-colors"
+          className="flex-1 py-2.5 px-4 text-center text-sm font-medium bg-aurora-cyan text-permafrost rounded-xl hover:shadow-glow-cyan transition-all"
         >
           기여하기
         </Link>
       </div>
     </div>
-  )
-}
-
-function BottomNav({ active }: { active: 'home' | 'explore' | 'rewards' }) {
-  return (
-    <nav className="border-t border-gray-100 bg-white">
-      <div className="flex justify-around py-3">
-        <Link href="/" className={`flex flex-col items-center gap-1 ${active === 'home' ? 'text-black' : 'text-gray-400'}`}>
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-          </svg>
-          <span className="text-xs">홈</span>
-        </Link>
-        <Link href="/explore" className={`flex flex-col items-center gap-1 ${active === 'explore' ? 'text-black' : 'text-gray-400'}`}>
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <span className="text-xs">탐색</span>
-        </Link>
-        <Link href="/rewards" className={`flex flex-col items-center gap-1 ${active === 'rewards' ? 'text-black' : 'text-gray-400'}`}>
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span className="text-xs">보상</span>
-        </Link>
-      </div>
-    </nav>
   )
 }

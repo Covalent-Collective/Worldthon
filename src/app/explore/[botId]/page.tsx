@@ -42,7 +42,7 @@ export default function ExplorePage() {
   if (!bot) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">봇을 찾을 수 없습니다</p>
+        <p className="text-arctic/50">봇을 찾을 수 없습니다</p>
       </div>
     )
   }
@@ -84,34 +84,34 @@ export default function ExplorePage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col bg-white">
+    <main className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="flex items-center gap-3 p-4 border-b border-gray-100">
-        <Link href="/" className="p-1">
+      <header className="glass-dark flex items-center gap-3 p-4">
+        <Link href="/" className="p-1 text-arctic/70 hover:text-arctic transition-colors">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
         <div className="flex items-center gap-2">
           <span className="text-2xl">{bot.icon}</span>
-          <h1 className="font-semibold">{bot.name}</h1>
+          <h1 className="font-semibold text-arctic">{bot.name}</h1>
         </div>
       </header>
 
       {/* Search Bar */}
       <form onSubmit={handleSubmit} className="p-4">
-        <div className="flex items-center gap-2 bg-gray-50 rounded-full px-4 py-3">
+        <div className="flex items-center gap-2 glass rounded-full px-4 py-3">
           <input
             type="text"
             value={question}
             onChange={e => setQuestion(e.target.value)}
             placeholder="질문을 입력하세요..."
-            className="flex-1 bg-transparent outline-none text-sm"
+            className="flex-1 bg-transparent outline-none text-sm text-arctic placeholder:text-arctic/40"
           />
           <button
             type="submit"
             disabled={isLoading}
-            className="p-1 text-gray-500 hover:text-black disabled:opacity-50"
+            className="p-1 text-arctic/50 hover:text-aurora-cyan disabled:opacity-50 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -133,9 +133,9 @@ export default function ExplorePage() {
       {/* Loading */}
       {isLoading && (
         <div className="px-4 py-3">
-          <div className="bg-gray-50 rounded-xl p-4 animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          <div className="glass-card rounded-xl p-4 animate-pulse">
+            <div className="h-4 bg-white/10 rounded w-3/4 mb-2"></div>
+            <div className="h-4 bg-white/10 rounded w-1/2"></div>
           </div>
         </div>
       )}
@@ -144,13 +144,13 @@ export default function ExplorePage() {
       {answer && !isLoading && (
         <div className="px-4 py-3 space-y-3">
           {/* Answer Bubble */}
-          <div className="bg-gray-50 rounded-xl p-4">
+          <div className="glass-card rounded-xl p-4">
             {/* Confidence Indicator */}
             {confidence > 0 && (
-              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-200">
+              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-white/10">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-gray-500">신뢰도</span>
-                  <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                  <span className="text-xs text-arctic/50">신뢰도</span>
+                  <div className="w-16 bg-white/10 rounded-full h-1.5">
                     <div
                       className={`h-1.5 rounded-full ${
                         confidence >= 70 ? 'bg-green-500' :
@@ -160,17 +160,17 @@ export default function ExplorePage() {
                     />
                   </div>
                   <span className={`text-xs font-medium ${
-                    confidence >= 70 ? 'text-green-600' :
-                    confidence >= 40 ? 'text-yellow-600' : 'text-red-500'
+                    confidence >= 70 ? 'text-green-400' :
+                    confidence >= 40 ? 'text-yellow-400' : 'text-red-400'
                   }`}>
                     {confidence}%
                   </span>
                 </div>
                 {matchedTerms.length > 0 && (
                   <div className="flex items-center gap-1 ml-auto">
-                    <span className="text-xs text-gray-400">매칭:</span>
+                    <span className="text-xs text-arctic/40">매칭:</span>
                     {matchedTerms.slice(0, 3).map((term, i) => (
-                      <span key={i} className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                      <span key={i} className="text-xs bg-aurora-violet/30 text-aurora-violet px-1.5 py-0.5 rounded">
                         {term}
                       </span>
                     ))}
@@ -178,30 +178,30 @@ export default function ExplorePage() {
                 )}
               </div>
             )}
-            <p className="text-sm text-gray-700 whitespace-pre-line">{answer}</p>
+            <p className="text-sm text-arctic/80 whitespace-pre-line">{answer}</p>
           </div>
 
           {/* Contribution Receipt */}
-          <div className="border border-dashed border-gray-300 rounded-xl p-4">
+          <div className="glass rounded-xl p-4 border border-dashed border-white/20">
             <div className="flex items-center gap-2 mb-3">
               <span>📄</span>
-              <span className="font-medium text-sm">기여 영수증</span>
+              <span className="font-medium text-sm text-arctic">기여 영수증</span>
             </div>
             <div className="space-y-2">
               {contributions.map((c, i) => (
                 <div key={i} className="flex items-center gap-3">
-                  <span className="text-xs text-gray-500 w-24 truncate">{c.contributor}</span>
-                  <div className="flex-1 bg-gray-100 rounded-full h-2">
+                  <span className="text-xs text-arctic/50 w-24 truncate font-mono">{c.contributor}</span>
+                  <div className="flex-1 bg-white/10 rounded-full h-2">
                     <div
-                      className="bg-black rounded-full h-2"
+                      className="bg-aurora-cyan rounded-full h-2"
                       style={{ width: `${c.percentage}%` }}
                     />
                   </div>
-                  <span className="text-xs text-gray-500 w-10">{c.percentage}%</span>
+                  <span className="text-xs text-arctic/50 w-10">{c.percentage}%</span>
                 </div>
               ))}
             </div>
-            <p className="text-xs text-gray-400 mt-3">
+            <p className="text-xs text-arctic/40 mt-3">
               이 답변은 위 기여자들의 지식을 기반으로 생성되었습니다
             </p>
           </div>
@@ -211,10 +211,10 @@ export default function ExplorePage() {
       {/* Selected Node Detail */}
       {selectedNode && !answer && (
         <div className="px-4 py-3">
-          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-            <h3 className="font-semibold mb-2">{selectedNode.label}</h3>
-            <p className="text-sm text-gray-600 mb-3">{selectedNode.content}</p>
-            <div className="flex items-center justify-between text-xs text-gray-400">
+          <div className="glass-card rounded-xl p-4">
+            <h3 className="font-semibold mb-2 text-arctic">{selectedNode.label}</h3>
+            <p className="text-sm text-arctic/70 mb-3">{selectedNode.content}</p>
+            <div className="flex items-center justify-between text-xs text-arctic/40 font-mono">
               <span>인용 {getCitationCount(selectedNode.id, selectedNode.citationCount)}회</span>
               <span>{selectedNode.contributor}</span>
             </div>

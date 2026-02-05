@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
     title: 'Seed Vault',
   },
 }
@@ -31,6 +31,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
+  themeColor: '#0A0A0F',
 }
 
 export default function RootLayout({
@@ -39,17 +40,26 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" className="dark">
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#0A0A0F" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-100`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-permafrost`}
       >
-        <div className="min-h-screen flex justify-center">
-          <div className="w-full max-w-[390px] bg-white min-h-screen shadow-xl">
+        {/* Background Effects */}
+        <div className="fixed inset-0 pointer-events-none">
+          <div className="absolute inset-0 bg-permafrost-gradient" />
+          <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-aurora-violet/10 rounded-full blur-[120px]" />
+          <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-aurora-cyan/5 rounded-full blur-[100px]" />
+        </div>
+
+        {/* App Container */}
+        <div className="relative min-h-screen flex justify-center">
+          <div className="w-full max-w-[390px] min-h-screen relative">
             <MiniKitProvider>
               {children}
             </MiniKitProvider>
