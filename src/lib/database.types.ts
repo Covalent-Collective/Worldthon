@@ -304,6 +304,19 @@ export interface Database {
         }
         Returns: void
       }
+      increment_contributor_rewards: {
+        Args: {
+          p_contributor_id: string
+          p_citation_count: number
+        }
+        Returns: void
+      }
+      claim_pending_wld: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: number
+      }
       get_user_stats: {
         Args: {
           user_nullifier: string

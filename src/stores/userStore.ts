@@ -20,11 +20,20 @@ interface ContributionRecord {
   botIcon?: string
 }
 
+interface ServerVerifyResult {
+  token: string
+  userId: string
+  verificationLevel: 'orb' | 'device'
+  nullifierHash: string
+}
+
 interface UserState {
   // 인증 상태 (로컬 캐시)
   isVerified: boolean
   nullifierHash: string | null
   userId: string | null
+  token: string | null
+  verificationLevel: 'orb' | 'device' | null
 
   // 보상 데이터
   rewards: UserRewards & { contributions: ContributionRecord[] }
@@ -32,12 +41,15 @@ interface UserState {
   isLoading: boolean
 
   // Actions
-  setVerified: (verified: boolean, nullifierHash?: string) => Promise<void>
+  setVerified: (verified: boolean, serverResult?: ServerVerifyResult) => Promise<void>
   loadUserData: () => Promise<void>
   addContribution: (botId: string, label: string, content: string) => Promise<string>
   claimRewards: () => Promise<number>
   loadGlobalStats: () => Promise<void>
   logout: () => void
+
+  // Computed helpers
+  isOrbVerified: () => boolean
 
   // Legacy (로컬 전용)
   incrementCitations: (count: number) => void
@@ -49,58 +61,48 @@ export const useUserStore = create<UserState>()(
       isVerified: false,
       nullifierHash: null,
       userId: null,
+      token: null,
+      verificationLevel: null,
       rewards: {
-        contributionPower: 37,
-        totalCitations: 128,
-        pendingWLD: 6.666666,
-        contributions: [
-          { botId: 'world-coin', nodeId: 'node-wc-001', createdAt: '2025-01-15T09:30:00Z' },
-          { botId: 'seoul-guide', nodeId: 'node-sg-001', createdAt: '2025-01-22T14:20:00Z' },
-          { botId: 'doctor', nodeId: 'node-dc-001', createdAt: '2025-02-01T11:45:00Z' },
-        ]
+        contributionPower: 0,
+        totalCitations: 0,
+        pendingWLD: 0,
+        contributions: []
       },
       globalStats: {
-        totalNodes: 192,
-        totalContributors: 65,
-        totalBots: 5
+        totalNodes: 0,
+        totalContributors: 0,
+        totalBots: 0
       },
       isLoading: false,
 
-      setVerified: async (verified, nullifierHash) => {
-        if (!verified || !nullifierHash) {
-          set({ isVerified: false, nullifierHash: null, userId: null })
+      setVerified: async (verified, serverResult) => {
+        if (!verified || !serverResult) {
+          set({
+            isVerified: false,
+            nullifierHash: null,
+            userId: null,
+            token: null,
+            verificationLevel: null
+          })
           return
         }
 
-        // Supabase 연결되어 있으면 서버에서 사용자 생성/조회
-        if (isSupabaseConfigured()) {
-          try {
-            const user = await api.getOrCreateUser(nullifierHash)
-            set({
-              isVerified: true,
-              nullifierHash,
-              userId: user.id
-            })
+        // Server-verified flow: token and userId come from server
+        set({
+          isVerified: true,
+          nullifierHash: serverResult.nullifierHash,
+          userId: serverResult.userId,
+          token: serverResult.token,
+          verificationLevel: serverResult.verificationLevel
+        })
 
-            // 사용자 데이터 로드
-            await get().loadUserData()
-            await get().loadGlobalStats()
-          } catch (error) {
-            console.error('Failed to verify user with Supabase:', error)
-            // Fallback: 로컬 모드
-            set({
-              isVerified: true,
-              nullifierHash,
-              userId: null
-            })
-          }
-        } else {
-          // 로컬 모드
-          set({
-            isVerified: true,
-            nullifierHash,
-            userId: null
-          })
+        // Load user data and global stats
+        try {
+          await get().loadUserData()
+          await get().loadGlobalStats()
+        } catch (error) {
+          console.error('Failed to load data after verification:', error)
         }
       },
 
@@ -209,7 +211,11 @@ export const useUserStore = create<UserState>()(
         const { userId } = get()
 
         if (isSupabaseConfigured() && userId) {
-          const amount = await api.claimRewards(userId)
+          const { nullifierHash } = get()
+          if (!nullifierHash) {
+            throw new Error('Not authenticated: nullifierHash missing')
+          }
+          const amount = await api.claimRewards(userId, nullifierHash)
 
           set(state => ({
             rewards: {
@@ -259,10 +265,14 @@ export const useUserStore = create<UserState>()(
         }
       })),
 
+      isOrbVerified: () => get().verificationLevel === 'orb',
+
       logout: () => set({
         isVerified: false,
         nullifierHash: null,
         userId: null,
+        token: null,
+        verificationLevel: null,
         rewards: {
           contributionPower: 0,
           totalCitations: 0,
@@ -277,7 +287,9 @@ export const useUserStore = create<UserState>()(
       partialize: (state) => ({
         isVerified: state.isVerified,
         nullifierHash: state.nullifierHash,
-        userId: state.userId
+        userId: state.userId,
+        token: state.token,
+        verificationLevel: state.verificationLevel
       })
     }
   )

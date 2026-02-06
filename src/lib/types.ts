@@ -79,5 +79,9 @@ export interface UserRewards {
     botId: string
     nodeId: string
     createdAt: string
+    label?: string
+    citationCount?: number
+    botName?: string
+    botIcon?: string
   }[]
 }

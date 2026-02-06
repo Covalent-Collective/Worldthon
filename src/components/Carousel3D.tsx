@@ -1,14 +1,15 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Link from 'next/link'
-import { expertBots } from '@/lib/mock-data'
+import type { ExpertBot } from '@/lib/types'
 
 interface CarouselProps {
-  bots: typeof expertBots
+  bots: ExpertBot[]
+  onBotSelect?: (bot: ExpertBot) => void
+  paused?: boolean
 }
 
-function Carousel3D({ bots }: CarouselProps) {
+function Carousel3D({ bots, onBotSelect, paused }: CarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(Math.floor(bots.length / 2))
   const autoTimerRef = useRef<NodeJS.Timeout | null>(null)
   const touchStartX = useRef(0)
@@ -25,14 +26,18 @@ function Carousel3D({ bots }: CarouselProps) {
   // Reset auto-rotate on interaction
   const resetAutoRotate = useCallback(() => {
     if (autoTimerRef.current) clearInterval(autoTimerRef.current)
-    autoTimerRef.current = setInterval(handleNext, 5000)
+    autoTimerRef.current = setInterval(handleNext, 1500)
   }, [handleNext])
 
-  // Auto-rotate
+  // Auto-rotate (pause when modal open)
   useEffect(() => {
-    autoTimerRef.current = setInterval(handleNext, 5000)
+    if (paused) {
+      if (autoTimerRef.current) clearInterval(autoTimerRef.current)
+      return
+    }
+    autoTimerRef.current = setInterval(handleNext, 1500)
     return () => { if (autoTimerRef.current) clearInterval(autoTimerRef.current) }
-  }, [handleNext])
+  }, [handleNext, paused])
 
   // Touch swipe
   const onTouchStart = useCallback((e: React.TouchEvent) => {
@@ -89,7 +94,7 @@ function Carousel3D({ bots }: CarouselProps) {
             return (
               <div
                 key={bot.id}
-                className={`absolute w-64 h-[400px] transition-all duration-500 ease-out ${
+                className={`absolute w-64 h-[400px] transition-all duration-300 ease-out ${
                   !isCenter && isAdjacent ? 'cursor-pointer' : ''
                 }`}
                 style={{
@@ -106,7 +111,7 @@ function Carousel3D({ bots }: CarouselProps) {
                 }}
                 onClick={() => handleCardClick(pos)}
               >
-                <BotCard bot={bot} isCenter={isCenter} />
+                <BotCard bot={bot} isCenter={isCenter} onSelect={onBotSelect} />
               </div>
             )
           })}
@@ -131,7 +136,7 @@ function Carousel3D({ bots }: CarouselProps) {
   )
 }
 
-function BotCard({ bot, isCenter }: { bot: typeof expertBots[0]; isCenter: boolean }) {
+function BotCard({ bot, isCenter, onSelect }: { bot: ExpertBot; isCenter: boolean; onSelect?: (bot: ExpertBot) => void }) {
   return (
     <div className={`w-full h-full rounded-2xl overflow-hidden border transition-all duration-500 flex flex-col ${
       isCenter
@@ -153,6 +158,11 @@ function BotCard({ bot, isCenter }: { bot: typeof expertBots[0]; isCenter: boole
         }`}>
           {bot.category}
         </span>
+        <span className={`absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md text-[10px] font-mono ${
+          isCenter ? 'bg-black/60 text-aurora-cyan/80' : 'bg-black/40 text-aurora-cyan/60'
+        }`}>
+          {bot.nodeCount} stories
+        </span>
         <div className={`absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t ${
           isCenter ? 'from-[#0d0d1a]' : 'from-permafrost/90'
         } to-transparent`} />
@@ -170,16 +180,16 @@ function BotCard({ bot, isCenter }: { bot: typeof expertBots[0]; isCenter: boole
 
       {/* Button */}
       <div className="px-4 pb-3 pt-1 flex items-center">
-        <Link href={`/explore/${bot.id}`} className="block w-full">
+        <button onClick={() => onSelect?.(bot)} className="block w-full">
           <div className="glass-btn-wrap rounded-xl w-full">
             <div className="glass-btn rounded-xl w-full">
               <span className="glass-btn-text block py-2.5 text-center text-sm font-medium">
-                탐색하기
+                스토리 보기
               </span>
             </div>
             <div className="glass-btn-shadow rounded-xl" />
           </div>
-        </Link>
+        </button>
       </div>
     </div>
   )

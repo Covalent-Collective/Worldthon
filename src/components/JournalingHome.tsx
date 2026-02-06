@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useUserStore } from '@/stores/userStore'
-import { expertBots } from '@/lib/mock-data'
+import { useBotsStore } from '@/stores/botsStore'
 import { VoiceOrb } from '@/components/VoiceOrb'
 
-type RecordingState = 'idle' | 'recording' | 'processing' | 'complete' | 'contributed'
+type RecordingState = 'idle' | 'recording' | 'processing' | 'camera' | 'complete' | 'contributed'
 
 interface ExtractedKeyword {
   text: string
@@ -23,12 +23,18 @@ interface RecommendedCommunity {
 
 export function JournalingHome() {
   const { nullifierHash, logout } = useUserStore()
+  const { bots, loadBots } = useBotsStore()
   const [recordingState, setRecordingState] = useState<RecordingState>('idle')
   const [recordingTime, setRecordingTime] = useState(0)
   const [extractedKeywords, setExtractedKeywords] = useState<ExtractedKeyword[]>([])
   const [recommendedCommunities, setRecommendedCommunities] = useState<RecommendedCommunity[]>([])
   const [selectedVaultIds, setSelectedVaultIds] = useState<Set<string>>(new Set())
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    loadBots()
+  }, [loadBots])
 
   // Recording timer
   useEffect(() => {
@@ -61,33 +67,52 @@ export function JournalingHome() {
 
     // Simulate AI processing
     setTimeout(() => {
-      // Mock extracted keywords
+      // Mock extracted keywords (startup-related)
       setExtractedKeywords([
-        { text: '도전', type: 'emotion' },
         { text: '창업', type: 'topic' },
-        { text: '실패', type: 'emotion' },
-        { text: '배움', type: 'topic' },
+        { text: '투자', type: 'topic' },
+        { text: '도전', type: 'emotion' },
+        { text: 'PMF', type: 'entity' },
         { text: '성장', type: 'emotion' },
       ])
 
-      // Mock recommended communities based on "journal content"
-      const shuffledBots = [...expertBots].sort(() => Math.random() - 0.5).slice(0, 3)
-      setRecommendedCommunities(
-        shuffledBots.map((bot, i) => ({
-          id: bot.id,
-          name: bot.name,
-          icon: bot.icon,
-          matchScore: 95 - i * 10,
-          reason: i === 0 ? '감정 유사도 높음' : i === 1 ? '관심사 일치' : '경험 공유 가능'
-        }))
-      )
+      // Startup-related recommended communities
+      setRecommendedCommunities([
+        {
+          id: 'startup-mentor',
+          name: '스타트업 멘토',
+          icon: '🚀',
+          matchScore: 97,
+          reason: '창업·투자 키워드 일치',
+        },
+        {
+          id: 'worldcoin-expert',
+          name: 'World Coin 전문가',
+          icon: '🌐',
+          matchScore: 85,
+          reason: 'Web3 투자 연관',
+        },
+        {
+          id: 'seoul-local-guide',
+          name: '서울 로컬 가이드',
+          icon: '🗺️',
+          matchScore: 72,
+          reason: '창업 네트워킹 장소',
+        },
+      ])
 
-      setRecordingState('complete')
+      setRecordingState('camera')
     }, 2000)
-  }, [])
+  }, [bots])
 
   const handleContribute = useCallback(() => {
     setRecordingState('contributed')
+  }, [])
+
+  // Mock BeReal capture - use static image instead of real camera
+  const capturePhoto = useCallback(() => {
+    setCapturedPhoto('/bereal-mock.png')
+    setRecordingState('complete')
   }, [])
 
   const resetRecording = useCallback(() => {
@@ -96,6 +121,7 @@ export function JournalingHome() {
     setExtractedKeywords([])
     setRecommendedCommunities([])
     setSelectedVaultIds(new Set())
+    setCapturedPhoto(null)
   }, [])
 
   const formatTime = (seconds: number) => {
@@ -128,7 +154,7 @@ export function JournalingHome() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-6">
         <AnimatePresence mode="wait">
-          {recordingState !== 'complete' && recordingState !== 'contributed' && (
+          {recordingState !== 'camera' && recordingState !== 'complete' && recordingState !== 'contributed' && (
             <motion.div
               key="orb"
               initial={{ opacity: 0, scale: 0.9 }}
@@ -167,32 +193,63 @@ export function JournalingHome() {
             </motion.div>
           )}
 
+          {recordingState === 'camera' && (
+            <motion.div
+              key="camera"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="flex flex-col items-center w-full max-w-sm cursor-pointer"
+              onClick={capturePhoto}
+            >
+              {/* BeReal-style mock — tap to capture */}
+              <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden border border-aurora-cyan/20 shadow-[0_0_40px_rgba(0,242,255,0.1)]">
+                <img
+                  src="/bereal-mock.png"
+                  alt="BeReal style capture"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <p className="text-arctic/40 text-xs mt-4 font-mono">TAP TO CAPTURE</p>
+            </motion.div>
+          )}
+
           {recordingState === 'complete' && (
             <motion.div
               key="complete"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="flex flex-col items-center w-full max-w-sm"
+              className="flex flex-col items-center w-full max-w-sm overflow-y-auto max-h-[calc(100vh-180px)] scrollbar-hide"
             >
-              {/* Success indicator */}
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', delay: 0.2 }}
-                className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-                style={{ background: 'linear-gradient(-20deg, #ddd6f3 0%, #faaca8 100%)' }}
-              >
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </motion.div>
-
-              <p className="text-arctic text-lg font-bold mb-1">분석 완료</p>
-              <p className="text-arctic/40 text-xs mb-6">{formatTime(recordingTime)} 녹음됨</p>
+              {/* Hero image with overlaid success indicator */}
+              <div className="relative w-3/5 mx-auto aspect-[3/4] rounded-2xl overflow-hidden mb-4 flex-shrink-0">
+                <img
+                  src={capturedPhoto || '/bereal-mock.png'}
+                  alt="Captured moment"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/30" />
+                {/* Centered checkmark + message */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', delay: 0.2 }}
+                    className="w-16 h-16 rounded-full flex items-center justify-center mb-3"
+                    style={{ background: 'linear-gradient(-20deg, #ddd6f3 0%, #faaca8 100%)' }}
+                  >
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </motion.div>
+                  <p className="text-white text-lg font-bold drop-shadow-lg">분석 완료</p>
+                  <p className="text-white/60 text-xs drop-shadow">{formatTime(recordingTime)} 녹음됨</p>
+                </div>
+              </div>
 
               {/* Extracted Keywords */}
-              <div className="w-full glass-card rounded-3xl p-4 mb-4">
+              <div className="w-full glass-card rounded-3xl p-4 mb-4 flex-shrink-0">
                 <p className="text-arctic/60 text-xs mb-3 font-mono">EXTRACTED KEYWORDS</p>
                 <div className="flex flex-wrap gap-2">
                   {extractedKeywords.map((keyword, i) => (
@@ -216,7 +273,7 @@ export function JournalingHome() {
               </div>
 
               {/* Recommended Vault */}
-              <div className="w-full glass-card rounded-3xl p-4 mb-6">
+              <div className="w-full glass-card rounded-3xl p-4 mb-6 flex-shrink-0">
                 <p className="text-arctic/60 text-xs mb-3 font-mono">RECOMMENDED VAULT</p>
                 <div className="space-y-2">
                   {recommendedCommunities.map((community, i) => (
@@ -247,11 +304,18 @@ export function JournalingHome() {
                       }`}>
                         <span className="text-xl">{community.icon}</span>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-arctic text-sm font-medium">{community.name}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-arctic text-sm font-medium">{community.name}</p>
+                          {i === 0 && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-aurora-violet/20 text-aurora-violet text-[10px] font-medium whitespace-nowrap">
+                              참여중
+                            </span>
+                          )}
+                        </div>
                         <p className="text-arctic/40 text-xs">{community.reason}</p>
                       </div>
-                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all flex-shrink-0 ${
                         selectedVaultIds.has(community.id)
                           ? 'border-aurora-cyan bg-aurora-cyan'
                           : 'border-arctic/20'

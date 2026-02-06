@@ -3,7 +3,7 @@
 import Link from 'next/link'
 
 interface BottomNavProps {
-  active: 'home' | 'explore' | 'rewards'
+  active: 'home' | 'dashboard' | 'explore' | 'rewards'
 }
 
 export function BottomNav({ active }: BottomNavProps) {
@@ -19,6 +19,21 @@ export function BottomNav({ active }: BottomNavProps) {
             strokeLinejoin="round"
             strokeWidth={isActive ? 2 : 1.5}
             d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m-4-4h8m-4-12a3 3 0 00-3 3v4a3 3 0 006 0V7a3 3 0 00-3-3z"
+          />
+        </svg>
+      ),
+    },
+    {
+      key: 'dashboard' as const,
+      href: '/dashboard',
+      label: 'Dashboard',
+      icon: (isActive: boolean) => (
+        <svg className="relative w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={isActive ? 2 : 1.5}
+            d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"
           />
         </svg>
       ),

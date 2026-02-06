@@ -10,6 +10,19 @@ const getClient = () => {
   return client
 }
 
+// Helper to read JWT token from persisted zustand store in localStorage
+function getToken(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const stored = localStorage.getItem('seed-vault-user')
+    if (!stored) return null
+    const parsed = JSON.parse(stored)
+    return parsed?.state?.token || null
+  } catch {
+    return null
+  }
+}
+
 // ==========================================
 // Bot 관련 API
 // ==========================================
@@ -42,6 +55,7 @@ export async function getAllBots(): Promise<ExpertBot[]> {
         name: bot.name,
         description: bot.description,
         icon: bot.icon,
+        profileImage: (bot as Record<string, unknown>).profile_image as string || undefined,
         category: bot.category,
         nodeCount: graph.nodes.length,
         contributorCount: uniqueContributors,
@@ -78,6 +92,7 @@ export async function getBotById(botId: string): Promise<ExpertBot | null> {
     name: bot.name,
     description: bot.description,
     icon: bot.icon,
+    profileImage: (bot as Record<string, unknown>).profile_image as string || undefined,
     category: bot.category,
     nodeCount: graph.nodes.length,
     contributorCount: uniqueContributors,
@@ -215,54 +230,25 @@ export async function addContribution(
   label: string,
   content: string
 ): Promise<string> {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase not configured')
+  const token = getToken()
+  if (!token) throw new Error('Authentication required')
+
+  const response = await fetch('/api/contribute', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ botId, label, content })
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to contribute')
   }
 
-  // 1. 노드 생성
-  const { data: node, error: nodeError } = await getClient()
-    .from('knowledge_nodes')
-    .insert({
-      bot_id: botId,
-      contributor_id: userId,
-      label,
-      content
-    })
-    .select()
-    .single()
-
-  if (nodeError) throw nodeError
-
-  // 2. contributions 테이블에 기록
-  const { error: contribError } = await getClient()
-    .from('contributions')
-    .insert({
-      user_id: userId,
-      bot_id: botId,
-      node_id: node.id,
-      status: 'approved' // MVP에서는 자동 승인
-    })
-
-  if (contribError) {
-    console.error('Failed to record contribution:', contribError)
-  }
-
-  // 3. 사용자 contribution_power 증가
-  const { data: user } = await getClient()
-    .from('users')
-    .select('contribution_power')
-    .eq('id', userId)
-    .single()
-
-  if (user) {
-    const newPower = Math.min((user.contribution_power || 0) + 5, 100)
-    await getClient()
-      .from('users')
-      .update({ contribution_power: newPower })
-      .eq('id', userId)
-  }
-
-  return node.id
+  const data = await response.json()
+  return data.nodeId
 }
 
 // ==========================================
@@ -279,59 +265,68 @@ export async function recordCitations(
     return
   }
 
-  for (const nodeId of nodeIds) {
-    try {
-      // 1. citations에 기록
-      await getClient()
-        .from('citations')
-        .insert({
-          node_id: nodeId,
-          session_id: sessionId,
-          context
-        })
+  try {
+    // 1. 배치로 citations 테이블에 INSERT
+    const citations = nodeIds.map(nodeId => ({
+      node_id: nodeId,
+      session_id: sessionId,
+      context
+    }))
 
-      // 2. citation_count 증가 (RPC 사용 시도)
-      const { error: rpcError } = await getClient().rpc('increment_citation_count', {
-        node_id: nodeId
-      })
+    const { error: insertError } = await getClient()
+      .from('citations')
+      .insert(citations)
 
-      if (rpcError) {
-        // RPC 실패 시 직접 업데이트
-        const { data: node } = await getClient()
-          .from('knowledge_nodes')
-          .select('citation_count, contributor_id')
-          .eq('id', nodeId)
-          .single()
-
-        if (node) {
-          await getClient()
-            .from('knowledge_nodes')
-            .update({ citation_count: node.citation_count + 1 })
-            .eq('id', nodeId)
-
-          // 3. 기여자 보상 업데이트
-          if (node.contributor_id) {
-            const { data: user } = await getClient()
-              .from('users')
-              .select('total_citations, pending_wld')
-              .eq('id', node.contributor_id)
-              .single()
-
-            if (user) {
-              await getClient()
-                .from('users')
-                .update({
-                  total_citations: user.total_citations + 1,
-                  pending_wld: Number(user.pending_wld) + 0.001
-                })
-                .eq('id', node.contributor_id)
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Failed to record citation for node:', nodeId, err)
+    if (insertError) {
+      console.error('Failed to insert citations:', insertError)
     }
+
+    // 2. RPC로 원자적 카운트 증가 (병렬 실행)
+    const rpcResults = await Promise.allSettled(
+      nodeIds.map(nodeId =>
+        getClient().rpc('increment_citation_count', { node_id: nodeId })
+      )
+    )
+
+    // 3. RPC 실패 건 로깅
+    rpcResults.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        console.error(`Failed to increment citation for node ${nodeIds[index]}:`, result.reason)
+      } else if (result.value?.error) {
+        console.error(`RPC error for node ${nodeIds[index]}:`, result.value.error)
+      }
+    })
+
+    // 4. 기여자 보상 원자적 업데이트 - RPC로 race condition 방지
+    const { data: nodes } = await getClient()
+      .from('knowledge_nodes')
+      .select('contributor_id')
+      .in('id', nodeIds)
+
+    if (nodes) {
+      const contributorIds = [...new Set(nodes.map(n => n.contributor_id).filter(Boolean))]
+
+      const rewardResults = await Promise.allSettled(
+        contributorIds.map((contributorId) => {
+          const citationCount = nodes.filter(n => n.contributor_id === contributorId).length
+          return getClient().rpc('increment_contributor_rewards', {
+            p_contributor_id: contributorId,
+            p_citation_count: citationCount
+          })
+        })
+      )
+
+      // RPC 실패 건 로깅
+      rewardResults.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          console.error(`Failed to update rewards for contributor ${contributorIds[index]}:`, result.reason)
+        } else if (result.value?.error) {
+          console.error(`RPC error for contributor ${contributorIds[index]}:`, result.value.error)
+        }
+      })
+    }
+  } catch (err) {
+    console.error('Failed to record citations:', err)
   }
 }
 
@@ -339,31 +334,26 @@ export async function recordCitations(
 // 보상 관련 API
 // ==========================================
 
-export async function claimRewards(userId: string): Promise<number> {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase not configured')
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function claimRewards(_userId: string, _nullifierHash: string): Promise<number> {
+  const token = getToken()
+  if (!token) throw new Error('Authentication required')
+
+  const response = await fetch('/api/claim', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    }
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to claim rewards')
   }
 
-  const { data: user, error: userError } = await getClient()
-    .from('users')
-    .select('pending_wld')
-    .eq('id', userId)
-    .single()
-
-  if (userError || !user) throw userError || new Error('User not found')
-
-  const amount = Number(user.pending_wld)
-
-  // pending_wld 리셋
-  await getClient()
-    .from('users')
-    .update({ pending_wld: 0 })
-    .eq('id', userId)
-
-  // user_rewards에 claim 기록 (있다면)
-  // 향후 블록체인 트랜잭션과 연동
-
-  return amount
+  const data = await response.json()
+  return data.amount
 }
 
 // ==========================================

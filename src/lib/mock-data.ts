@@ -23,7 +23,15 @@ import type {
 export async function fetchAllBots(): Promise<ExpertBot[]> {
   if (isSupabaseConfigured()) {
     try {
-      return await api.getAllBots()
+      const supabaseBots = await api.getAllBots()
+      // Merge: use Supabase metadata but enrich graph data from mock if richer
+      return supabaseBots.map(sb => {
+        const mockBot = baseExpertBots.find(mb => mb.id === sb.id)
+        if (mockBot && mockBot.graph.nodes.length > sb.graph.nodes.length) {
+          return { ...sb, graph: mockBot.graph, nodeCount: mockBot.graph.nodes.length }
+        }
+        return sb
+      })
     } catch (error) {
       console.error('Failed to fetch bots from Supabase:', error)
     }
@@ -39,7 +47,13 @@ export async function fetchBotById(id: string): Promise<ExpertBot | undefined> {
   if (isSupabaseConfigured()) {
     try {
       const bot = await api.getBotById(id)
-      return bot || undefined
+      if (bot) {
+        const mockBot = baseExpertBots.find(mb => mb.id === id)
+        if (mockBot && mockBot.graph.nodes.length > bot.graph.nodes.length) {
+          return { ...bot, graph: mockBot.graph, nodeCount: mockBot.graph.nodes.length }
+        }
+        return bot
+      }
     } catch (error) {
       console.error('Failed to fetch bot from Supabase:', error)
     }
@@ -628,8 +642,8 @@ const baseExpertBots: ExpertBot[] = [
   },
   {
     id: 'korean-recipes',
-    name: '한식 레시피 마스터',
-    description: '전통 한식부터 현대적 퓨전까지',
+    name: '조림 마스터',
+    description: '최강록 셰프의 조림 비법과 한식 요리 노하우',
     icon: 'K',
     profileImage: '/profiles/chef.png',
     category: '요리',
@@ -812,6 +826,7 @@ const baseExpertBots: ExpertBot[] = [
     name: '스타트업 멘토',
     description: '창업, 투자, 스케일업 경험 공유',
     icon: 'B',
+    profileImage: '/profiles/startup-mentor.png',
     category: '비즈니스',
     nodeCount: 38,
     contributorCount: 15,
@@ -960,6 +975,22 @@ const baseExpertBots: ExpertBot[] = [
           contributor: '0xfounder18...anon',
           createdAt: '2025-12-05',
           citationCount: 28
+        },
+        {
+          id: 'startup-19',
+          label: '글로벌 진출 전략',
+          content: '동남아 시장은 한국 스타트업의 첫 글로벌 진출지로 적합합니다. 인도네시아(인구 2.7억), 베트남(고성장) 시장을 주목하세요. 현지 파트너십 구축이 필수이며, 크로스보더 결제와 현지화가 핵심 과제입니다.',
+          contributor: '0xfounder19...anon',
+          createdAt: '2025-12-10',
+          citationCount: 26
+        },
+        {
+          id: 'startup-20',
+          label: '그로스 해킹',
+          content: 'AARRR 퍼널(Acquisition-Activation-Retention-Revenue-Referral)로 성장을 체계화하세요. 드롭오프가 가장 큰 단계를 먼저 개선합니다. 토스는 추천인 보상 시스템으로 초기 100만 유저를 확보했습니다.',
+          contributor: '0xfounder20...anon',
+          createdAt: '2025-12-15',
+          citationCount: 37
         }
       ],
       edges: [
@@ -982,7 +1013,12 @@ const baseExpertBots: ExpertBot[] = [
         { source: 'startup-8', target: 'startup-9', relationship: '비교' },
         { source: 'startup-9', target: 'startup-10', relationship: '비교' },
         { source: 'startup-10', target: 'startup-11', relationship: '비교' },
-        { source: 'startup-5', target: 'startup-15', relationship: '관련됨' }
+        { source: 'startup-5', target: 'startup-15', relationship: '관련됨' },
+        { source: 'startup-19', target: 'startup-3', relationship: '다음 단계' },
+        { source: 'startup-19', target: 'startup-11', relationship: '예시' },
+        { source: 'startup-20', target: 'startup-5', relationship: '관련됨' },
+        { source: 'startup-20', target: 'startup-4', relationship: '근거' },
+        { source: 'startup-20', target: 'startup-8', relationship: '예시' }
       ]
     }
   },
@@ -991,6 +1027,7 @@ const baseExpertBots: ExpertBot[] = [
     name: '크립토 전문가',
     description: '비트코인, 이더리움, DeFi에 대한 심층 분석',
     icon: 'C',
+    profileImage: '/profiles/crypto-expert.png',
     category: 'Web3',
     nodeCount: 20,
     contributorCount: 9,
@@ -1169,6 +1206,7 @@ const baseExpertBots: ExpertBot[] = [
     name: 'K-POP 인사이더',
     description: 'K-POP 아이돌, 음원차트, 팬덤 문화 전문가',
     icon: 'P',
+    profileImage: '/profiles/kpop-insider.png',
     category: '엔터테인먼트',
     nodeCount: 18,
     contributorCount: 11,

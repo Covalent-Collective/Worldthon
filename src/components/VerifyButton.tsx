@@ -7,7 +7,7 @@ interface VerifyButtonProps {
 }
 
 export function VerifyButton({ onVerified }: VerifyButtonProps) {
-  const { isVerified, isVerifying, error, verify, isInWorldApp } = useWorldId()
+  const { isVerified, isVerifying, verificationLevel, error, verify, isInWorldApp } = useWorldId()
 
   const handleClick = async () => {
     const success = await verify()
@@ -17,6 +17,33 @@ export function VerifyButton({ onVerified }: VerifyButtonProps) {
   }
 
   if (isVerified) {
+    // Orb-verified: full access
+    if (verificationLevel === 'orb') {
+      return (
+        <div className="flex items-center gap-2 text-green-400">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" strokeWidth={2} />
+            <circle cx="12" cy="12" r="4" strokeWidth={2} />
+          </svg>
+          <span className="font-medium">Orb 인증 완료</span>
+        </div>
+      )
+    }
+
+    // Device-verified: limited access
+    if (verificationLevel === 'device') {
+      return (
+        <div className="flex items-center gap-2 text-amber-400">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <rect x="7" y="4" width="10" height="16" rx="2" strokeWidth={2} />
+            <line x1="12" y1="17" x2="12" y2="17.01" strokeWidth={2} strokeLinecap="round" />
+          </svg>
+          <span className="font-medium">Device 인증 (기여 제한)</span>
+        </div>
+      )
+    }
+
+    // Fallback for unknown verification level
     return (
       <div className="flex items-center gap-2 text-green-400">
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

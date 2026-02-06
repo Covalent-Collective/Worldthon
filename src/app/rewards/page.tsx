@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUserStore } from '@/stores/userStore'
+import { useBotsStore } from '@/stores/botsStore'
 import { BottomNav } from '@/components/BottomNav'
-import { expertBots } from '@/lib/mock-data'
 import { AuroraBackground } from '@/components/AuroraBackground'
+import { getContractStats, claimRewardOnChain, isContractConfigured } from '@/lib/contract'
+import type { ContractStats } from '@/lib/contract'
 
 
 // Power level visualization
@@ -29,39 +31,61 @@ function PowerMeter({ level, maxLevel = 10 }: { level: number; maxLevel?: number
   )
 }
 
-// Static mock data for demo
-const STATIC_REWARDS = {
-  contributionPower: 37,
-  totalCitations: 128,
-  pendingWLD: 6.666666,
-  contributions: [
-    { botId: 'world-coin', nodeId: 'node-wc-001', createdAt: '2025-01-15T09:30:00Z' },
-    { botId: 'seoul-guide', nodeId: 'node-sg-001', createdAt: '2025-01-22T14:20:00Z' },
-    { botId: 'doctor', nodeId: 'node-dc-001', createdAt: '2025-02-01T11:45:00Z' },
-  ],
-}
-const STATIC_POWER_LEVEL = Math.min(10, Math.ceil(STATIC_REWARDS.contributionPower / 10))
-
 export default function RewardsPage() {
-  const { isVerified } = useUserStore()
+  const { isVerified, userId, rewards, claimRewards, loadUserData } = useUserStore()
+  const { getBotById, loadBots } = useBotsStore()
   const [mounted, setMounted] = useState(false)
   const [showClaimSuccess, setShowClaimSuccess] = useState(false)
+  const [onChainStats, setOnChainStats] = useState<ContractStats | null>(null)
 
   useEffect(() => {
     setMounted(true)
-  }, [])
+    loadBots()
+
+    // 컨트랙트가 설정된 경우 온체인 통계 로드
+    if (isContractConfigured()) {
+      getContractStats()
+        .then((stats) => {
+          if (stats.totalContributions > BigInt(0) || stats.totalCitations > BigInt(0)) {
+            setOnChainStats(stats)
+          }
+        })
+        .catch(() => {
+          // 온체인 통계 로드 실패는 무시
+        })
+    }
+  }, [loadBots])
+
+  // 인증된 사용자의 보상 데이터를 Supabase에서 로드
+  useEffect(() => {
+    if (isVerified && userId) {
+      loadUserData()
+    }
+  }, [isVerified, userId, loadUserData])
 
   if (!mounted) {
     return null
   }
 
-  const handleClaim = () => {
-    setShowClaimSuccess(true)
-    setTimeout(() => setShowClaimSuccess(false), 3000)
+  const handleClaim = async () => {
+    try {
+      await claimRewards()
+
+      // 온체인 보상 청구 (fire-and-forget, DB 청구와 병행)
+      if (isContractConfigured()) {
+        claimRewardOnChain().catch(() => {
+          // 온체인 청구 실패는 무시 - DB 청구가 우선
+        })
+      }
+
+      setShowClaimSuccess(true)
+      setTimeout(() => setShowClaimSuccess(false), 3000)
+    } catch (error) {
+      console.error('Failed to claim rewards:', error)
+    }
   }
 
-  const rewards = STATIC_REWARDS
-  const powerLevel = STATIC_POWER_LEVEL
+  const powerLevel = Math.min(10, Math.ceil(rewards.contributionPower / 10))
 
   if (!isVerified) {
     return (
@@ -195,6 +219,33 @@ export default function RewardsPage() {
           </div>
         </div>
 
+        {/* On-chain Activity (온체인 통계가 있을 때만 표시) */}
+        {onChainStats && (
+          <div className="glass-card rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-aurora-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.172 13.828a4 4 0 015.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" />
+              </svg>
+              <p className="text-arctic/50 text-xs font-mono">ON-CHAIN ACTIVITY</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-arctic/40 text-[10px] font-mono">CONTRIBUTIONS</p>
+                <p className="text-lg font-bold text-arctic font-digital">
+                  {onChainStats.totalContributions.toString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-arctic/40 text-[10px] font-mono">CITATIONS</p>
+                <p className="text-lg font-bold text-arctic font-digital">
+                  {onChainStats.totalCitations.toString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Transaction Log */}
         <div className="space-y-3">
           <p className="text-arctic/50 text-xs font-mono px-1">TRANSACTION LOG</p>
@@ -208,7 +259,8 @@ export default function RewardsPage() {
               ) : (
                 <div className="space-y-3">
                   {rewards.contributions.slice().reverse().map((contribution, i) => {
-                    const bot = expertBots.find(b => b.id === contribution.botId)
+                    const bot = getBotById(contribution.botId)
+                    const displayName = contribution.botName || bot?.name || contribution.label || 'Unknown'
                     return (
                       <div key={i} className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{
@@ -217,7 +269,7 @@ export default function RewardsPage() {
                           <span className="text-[10px] text-arctic/60">+</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-arctic/80 text-xs truncate">{bot?.name || 'Unknown'}</p>
+                          <p className="text-arctic/80 text-xs truncate">{displayName}</p>
                           <p className="text-arctic/30 text-[10px]">
                             {contribution.createdAt.split('T')[0]}
                           </p>
