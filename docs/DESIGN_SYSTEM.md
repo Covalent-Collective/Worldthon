@@ -66,10 +66,13 @@ background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0
 
 ### Font Family
 
-| 용도 | Font | Fallback |
-|------|------|----------|
-| **Primary** | Geist Sans | -apple-system, Pretendard, sans-serif |
-| **Monospace** | Geist Mono | Menlo, Monaco, monospace |
+| 용도 | Font | Fallback | 사용처 |
+|------|------|----------|--------|
+| **Primary** | Geist Sans | -apple-system, Pretendard, sans-serif | 일반 텍스트 |
+| **Monospace** | Geist Mono | Menlo, Monaco, monospace | 코드, 시리얼 넘버 |
+| **Digital** | Orbitron (Google Fonts) | Chakra Petch, monospace | 숫자 표시, 레벨, 타이머 |
+
+Usage: `font-digital` Tailwind class -- 모든 숫자 디스플레이에 사용 (WLD 금액, 파워 레벨, 노드 수, 타이머)
 
 ### Font Sizes
 
@@ -188,6 +191,19 @@ box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 60px rgba(0, 242, 255, 0.1
 text-shadow: 0 0 10px rgba(0, 242, 255, 0.5), 0 0 20px rgba(0, 242, 255, 0.3);
 ```
 
+### Main Gradient (Primary Accent)
+
+```css
+background: linear-gradient(-20deg, #ddd6f3 0%, #faaca8 100%);
+```
+
+Used in: CTA 버튼 텍스트, 성공 아이콘, 진행바, 1위 contributor 바, VoiceOrb 중심
+
+Translucent variant (카드 배경용):
+```css
+background: linear-gradient(-20deg, rgba(221,214,243,0.25) 0%, rgba(250,172,168,0.25) 100%);
+```
+
 ---
 
 ## 5. Animation (애니메이션)
@@ -289,6 +305,45 @@ Text: #E0E7FF
 Hover: Background rgba(255, 255, 255, 0.05)
 ```
 
+### Glass Button (3-Layer System)
+
+Production에서 사용되는 실제 버튼 구조:
+
+**Structure:**
+```html
+<div class="glass-btn-wrap rounded-xl">     <!-- 외부 래퍼 -->
+  <div class="glass-btn rounded-xl">        <!-- 유리 효과 본체 -->
+    <span class="glass-btn-text">Text</span> <!-- 텍스트 -->
+  </div>
+  <div class="glass-btn-shadow rounded-xl" /> <!-- 그림자 레이어 -->
+</div>
+```
+
+**CSS:**
+```css
+.glass-btn-wrap { position: relative; }
+.glass-btn {
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.15);
+  position: relative;
+  overflow: hidden;
+}
+.glass-btn::before { /* gradient shimmer */ }
+.glass-btn-text {
+  background: linear-gradient(-20deg, #ddd6f3 0%, #faaca8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.glass-btn-shadow {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(-20deg, rgba(221,214,243,0.15), rgba(250,172,168,0.15));
+  filter: blur(20px);
+  z-index: -1;
+}
+```
+
 ### Cards
 
 **Monolith Card (3D 기울기)**
@@ -325,15 +380,35 @@ Padding: 12px 16px
 Placeholder: rgba(224, 231, 255, 0.4)
 ```
 
-### Navigation
+### Bottom Navigation (Fixed)
 
-**Bottom Tab Bar**
 ```
-Background: rgba(10, 10, 15, 0.9)
-Backdrop-filter: blur(20px)
-Height: 64px (Safe area 추가)
-Active: #00F2FF with glow
-Inactive: rgba(224, 231, 255, 0.5)
+Position: fixed bottom-0, z-50
+Max Width: 390px (모바일 제한)
+Glass: glass-nav (blur + semi-transparent)
+Active State: aurora-cyan glow + bg-aurora-cyan/12
+```
+
+Tabs: Journal (마이크) -- Explore (지구) -- Reward (선물)
+
+### Aurora Background
+
+모든 페이지의 배경 컴포넌트.
+
+**Layers:**
+1. Base: repeating-linear-gradient(-45deg, violet, cyan, blue, purple) -- 느린 회전
+2. Floating Orbs: framer-motion animated div (3개) -- blur-3xl, opacity 변화
+3. Content: children overlay
+
+**CSS:**
+```css
+.aurora-bg {
+  background: repeating-linear-gradient(-45deg,
+    rgba(102,126,234,0.15), rgba(0,242,255,0.1),
+    rgba(79,172,254,0.15), rgba(118,75,162,0.1));
+  background-size: 400% 400%;
+  animation: auroraShift 20s ease infinite;
+}
 ```
 
 ### Modals
@@ -469,6 +544,21 @@ outline-offset: 2px;
 
 ---
 
+## 9.5 실제 사용 컴포넌트 매핑
+
+| 컴포넌트 | 사용된 클래스 | Border Radius |
+|---------|-------------|---------------|
+| 일반 카드 | glass-card | rounded-2xl (16px) |
+| 피처 카드 | glass-card | rounded-3xl (24px) |
+| 버튼 | glass-btn-wrap | rounded-xl (12px) |
+| 검색바 | glass-card | rounded-2xl |
+| 하단 네비 | glass-nav | rounded-2xl |
+| 입력 필드 | bg-transparent | - |
+| 태그/칩 | bg-aurora-violet/20 | rounded (full) |
+| 진행바 | h-1.5 bg-white/10 | rounded-full |
+
+---
+
 ## 10. Design Principles (디자인 원칙)
 
 1. **Cold & Preserved** - 차갑고 보존된 느낌. 노이즈 텍스처로 콘크리트 질감 표현
@@ -479,5 +569,23 @@ outline-offset: 2px;
 
 ---
 
-*Last Updated: 2026-02-05*
-*Version: 1.0*
+## 10.5 VoiceOrb 3D Sphere
+
+CSS-only 3D 구체 시뮬레이션:
+
+**Layers:**
+1. Base: radial-gradient (구체 기본색)
+2. Diffuse Light: radial-gradient at 30% 30% (확산광)
+3. Specular: radial-gradient at 35% 25% (정반사)
+4. Rim Light: radial-gradient at center (림라이트)
+5. Ambient Occlusion: radial-gradient (접촉면 그림자)
+
+**Animation:**
+- 녹음 상태: blob morphing via 8-band frequency -- border-radius 변형
+- 유휴 상태: 느린 floating + 부드러운 호흡 효과
+- Fake Audio: sin/cos + random으로 자연스러운 움직임 시뮬레이션
+
+---
+
+*Last Updated: 2026-02-06*
+*Version: 2.0*

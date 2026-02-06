@@ -33,6 +33,7 @@ Seed Vault 홈페이지가 보이면 설정 완료!
 | npm | 9.x 이상 | ✅ |
 | World App | 최신 버전 | ✅ (테스트용) |
 | World Developer Portal 계정 | - | ✅ |
+| framer-motion | 11.x | ✅ (애니메이션) |
 
 ---
 
@@ -225,6 +226,7 @@ Vercel Dashboard > Project > Settings > Environment Variables:
 | `MiniKit is not installed` | World App 외부 | Mock 모드로 자동 전환 |
 | `Verification failed` | Action 비활성화 | Developer Portal 확인 |
 | `Hydration failed` | SSR 불일치 | useEffect로 클라이언트 로직 분리 |
+| `.next` 캐시 오류 | 빌드 실패 | `rm -rf .next && npm run build` |
 
 ### npm install 실패
 
@@ -308,6 +310,17 @@ npx shadcn@latest add tabs
 - Card
 - Input
 - Textarea
+
+**참고**: MVP에서는 shadcn/ui 기본 컴포넌트(Button, Card, Input, Textarea) 외에
+커스텀 글래스모피즘 컴포넌트를 주로 사용합니다:
+- `AuroraBackground` - 오로라 배경 (전 페이지)
+- `VoiceOrb` - 3D 음성 오브
+- `JournalingHome` - 저널링 홈 화면
+- `KnowledgeGraph` - 지식 그래프 시각화
+- `DetailedContributionReceipt` - 기여 영수증
+- `BottomNav` - 하단 고정 네비게이션
+- `Carousel3D` - 3D CSS 카루셀
+- `GlassButton` - 글래스 버튼
 
 ---
 

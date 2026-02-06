@@ -5,35 +5,40 @@
 | 영역 | 기술 | 버전 | 선정 이유 |
 |------|------|------|-----------|
 | Framework | Next.js | 14 (App Router) | MiniKit 호환, SSR 지원 |
-| UI Components | shadcn/ui | latest | 일관된 디자인 시스템, Radix 기반 |
+| UI Components | Custom Glassmorphism | - | glass-card, glass-btn-wrap 3-layer 시스템 |
 | Styling | Tailwind CSS | 3.x | 빠른 UI 개발, 모바일 반응형 |
+| Animation | framer-motion | 11.x | 애니메이션, 페이지 전환 |
 | World ID | MiniKit JS SDK | latest | World App 네이티브 통합 |
-| Graph | react-force-graph-2d | 1.x | 경량, 모바일 최적화 |
+| Graph | Custom KnowledgeGraph | - | Canvas 기반 2D 그래프, 자체 구현 |
 | State | Zustand | 4.x | 가벼운 상태 관리, persist 지원 |
+| Font | Orbitron (Google Fonts) | - | 디지털 숫자 표시용 font-digital |
 | Data | Mock JSON | - | MVP용, 실제 DB 없음 |
 
 ---
 
-## shadcn/ui 설정
+## Glassmorphism Design System
 
-### Configuration
-- **Style**: new-york
-- **Base Color**: neutral
-- **CSS Variables**: Enabled
+### Glass Components
+| Component | Class | Usage |
+|-----------|-------|-------|
+| Glass Card | `glass-card` | 카드, 정보 패널 |
+| Glass Button (3-layer) | `glass-btn-wrap > glass-btn > glass-btn-text + glass-btn-shadow` | CTA, 액션 버튼 |
+| Glass Navigation | `glass-nav` | 하단 네비게이션 |
+| Aurora Background | `AuroraBackground` | 모든 페이지 배경 (그라디언트 + 오로라 orb) |
 
-### 설치된 컴포넌트
+### Key Gradients
+| Name | CSS | Usage |
+|------|-----|-------|
+| Main Gradient | `linear-gradient(-20deg, #ddd6f3 0%, #faaca8 100%)` | 주요 CTA, 성공 표시, 진행바 |
+| Aurora Background | `repeating-linear-gradient(-45deg, violet->cyan->blue->purple)` | 페이지 배경 |
 
+### 기본 UI 컴포넌트
 | Component | Path | Usage |
 |-----------|------|-------|
-| Button | `@/components/ui/button` | CTA, 액션 버튼 |
-| Card | `@/components/ui/card` | 봇 카드, 대시보드 섹션 |
+| Button | `@/components/ui/Button` | 기본 버튼 |
+| Card | `@/components/ui/Card` | 기본 카드 |
 | Input | `@/components/ui/input` | 지식 제목 입력 |
 | Textarea | `@/components/ui/textarea` | 지식 내용 입력 |
-
-### 컴포넌트 추가 방법
-```bash
-npx shadcn@latest add [component-name]
-```
 
 ---
 
@@ -42,27 +47,29 @@ npx shadcn@latest add [component-name]
 ```
 seed-vault-mvp/
 ├── docs/                       # 문서
-│   ├── PLAN.md                 # 구현 계획
-│   ├── ARCHITECTURE.md         # 기술 아키텍처
-│   ├── USER_FLOW.md            # 사용자 플로우
-│   ├── DEMO_SCENARIO.md        # 데모 시나리오
-│   ├── SETUP.md                # 개발 환경 설정
-│   ├── PITCH.md                # 피치 개요
-│   └── API_CONTRACTS.md        # API 계약
 ├── src/
 │   ├── app/                    # Next.js App Router
-│   │   ├── layout.tsx          # MiniKit Provider 래핑
-│   │   ├── page.tsx            # 마켓플레이스 (홈)
-│   │   ├── contribute/
-│   │   │   └── [botId]/page.tsx
+│   │   ├── layout.tsx          # 전역 레이아웃 (Orbitron 폰트)
+│   │   ├── page.tsx            # 랜딩 / 저널링 홈
+│   │   ├── globals.css         # 글로벌 스타일 + glass utilities
 │   │   ├── explore/
-│   │   │   └── [botId]/page.tsx
+│   │   │   ├── page.tsx        # Vault 탐색 (봇 목록)
+│   │   │   └── [botId]/page.tsx # 봇 상세 (그래프 + 질문)
 │   │   └── rewards/
-│   │       └── page.tsx
+│   │       └── page.tsx        # 보상 대시보드
 │   ├── components/
-│   │   ├── ui/                 # shadcn/ui 컴포넌트
+│   │   ├── ui/                 # 기본 UI (Button, Card, Input, Textarea)
+│   │   ├── AuroraBackground.tsx    # 오로라 배경 (전 페이지)
+│   │   ├── BottomNav.tsx           # 하단 고정 네비 (Journal/Explore/Reward)
+│   │   ├── Carousel3D.tsx          # 3D CSS 회전 카루셀
+│   │   ├── DetailedContributionReceipt.tsx  # 기여 영수증
+│   │   ├── EtherealShadow.tsx      # 이더리얼 그림자 효과
+│   │   ├── GlassButton.tsx         # 글래스 버튼 컴포넌트
+│   │   ├── GraphStatsOverlay.tsx   # 그래프 통계 오버레이
+│   │   ├── JournalingHome.tsx      # 저널링 홈 (음성 녹음 + 기여 플로우)
+│   │   ├── KnowledgeGraph.tsx      # 지식 그래프 시각화
+│   │   ├── VoiceOrb.tsx            # 3D 음성 오브 (가짜 오디오)
 │   │   ├── BotCard.tsx
-│   │   ├── KnowledgeGraph.tsx
 │   │   ├── ContributionReceipt.tsx
 │   │   ├── VerifyButton.tsx
 │   │   └── RewardGauge.tsx
@@ -74,9 +81,13 @@ seed-vault-mvp/
 │   ├── hooks/
 │   │   └── useWorldId.ts       # World ID 인증 훅
 │   └── stores/
-│       └── userStore.ts        # Zustand 스토어
+│       ├── userStore.ts        # Zustand 사용자 스토어
+│       ├── citationStore.ts    # 인용 추적 스토어
+│       └── knowledgeStore.ts   # 지식 노드 관리 스토어
 ├── public/
-├── .env.local                  # 환경 변수
+│   ├── worldcoin-logo.svg      # Worldcoin 로고
+│   ├── profiles/               # 봇 프로필 이미지
+│   └── fonts/                  # 커스텀 폰트
 └── package.json
 ```
 
@@ -84,19 +95,18 @@ seed-vault-mvp/
 
 ## 디자인 시스템
 
-### 색상 체계
+### 색상 체계 (Digital Permafrost Theme)
 
 | Name | Hex | Usage |
 |------|-----|-------|
-| Primary | `#000000` | World ID 연동, CTA |
-| Primary Light | `#333333` | Hover 상태 |
+| Night | `#0a0a0f` | 페이지 배경 |
+| Permafrost | `#12121a` | 카드 배경, 중간 레이어 |
+| Arctic | `#e0e7ff` | 주 텍스트 |
+| Aurora Cyan | `#00f2ff` | 주요 CTA, 활성 상태 |
+| Aurora Violet | `#667eea` | 보조 포인트 |
 | Success | `#4ADE80` | 성공, Contribution Power |
 | Warning | `#FBBF24` | Pending 상태 |
 | Error | `#EF4444` | 검증 에러 |
-| Background | `#FFFFFF` | 페이지 배경 |
-| Surface | `#F9FAFB` | 카드, 상승 표면 |
-| Border | `#E5E7EB` | 구분선, 입력 테두리 |
-| Muted | `#6B7280` | 보조 텍스트 |
 
 ### 타이포그래피
 
@@ -279,6 +289,19 @@ interface UserState {
 }
 ```
 
+### citationStore (인용 추적)
+```typescript
+// 노드별 인용 횟수 추적, 기여자별 인용 집계
+// 질문-답변 플로우에서 참조된 노드의 인용 횟수 자동 증가
+```
+
+### knowledgeStore (지식 노드 관리)
+```typescript
+// 그래프 노드/엣지 CRUD 관리
+// 새 기여 노드 추가 시 기존 그래프에 병합
+// 노드 하이라이트 상태 관리
+```
+
 ### Persistence
 - Storage key: `seed-vault-user`
 - Middleware: `zustand/middleware/persist`
@@ -286,38 +309,42 @@ interface UserState {
 
 ---
 
-## react-force-graph-2d 통합
+## Custom KnowledgeGraph (Canvas 기반)
 
-### SSR 처리 (Critical)
-```typescript
-// 반드시 dynamic import + ssr: false 사용
-const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
-  ssr: false,
-  loading: () => <GraphSkeleton />
-})
+자체 구현한 Canvas 2D 기반 지식 그래프 시각화 컴포넌트.
+
+### 렌더링 방식
+- **Canvas 2D Context**: HTML5 Canvas API 직접 사용
+- **물리 시뮬레이션**: 자체 force-directed 레이아웃
+- **애니메이션**: requestAnimationFrame 기반 렌더 루프
+
+### 노드 렌더링
+```
+원형 노드 + 글로우 효과
+- 기본 노드: 원(circle) + 라벨
+- 하이라이트 노드: 확대 + 글로우(glow) 이펙트
+- 크기: 인용 횟수에 비례
 ```
 
-### 그래프 데이터 변환
-```typescript
-// Input: ExpertBot.graph
-{ nodes: KnowledgeNode[], edges: KnowledgeEdge[] }
-
-// Output: ForceGraph format
-{
-  nodes: { id, name, val, color, node }[],
-  links: { source, target, label }[]
-}
-
-// Node size 계산: Math.log(citationCount + 1) * 3 + 5
+### 엣지 렌더링
 ```
+곡선 베지어 연결
+- 노드 간 연결선: quadratic bezier curve
+- 방향 표시: 반투명 그라디언트
+```
+
+### GraphStatsOverlay
+그래프 위에 오버레이되는 통계 패널:
+- 총 노드 수, 엣지 수
+- 기여자 수, 인용 횟수
 
 ### 성능 설정
 
 | Setting | Value | Reason |
 |---------|-------|--------|
-| `cooldownTicks` | 50 | 50회 반복 후 물리엔진 정지 |
-| `nodeRelSize` | 4 | 기본 노드 크기 배수 |
+| Canvas 해상도 | devicePixelRatio 대응 | 레티나 디스플레이 지원 |
 | Node limit | 30 max | 모바일 WebView 성능 |
+| 애니메이션 | requestAnimationFrame | 부드러운 60fps 렌더링 |
 
 ---
 
@@ -325,12 +352,13 @@ const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
 
 ### WCAG 2.1 AA 준수
 
-#### 색상 대비
+#### 색상 대비 (Dark Theme)
 | Element | Foreground | Background | Ratio | Status |
 |---------|------------|------------|-------|--------|
-| Body text | #000000 | #FFFFFF | 21:1 | Pass |
-| Primary button | #FFFFFF | #000000 | 21:1 | Pass |
-| Muted text | #6B7280 | #FFFFFF | 4.6:1 | Pass |
+| Body text (Arctic) | #e0e7ff | #0a0a0f | 14.2:1 | Pass |
+| CTA (Aurora Cyan) | #00f2ff | #0a0a0f | 12.1:1 | Pass |
+| Card text (Arctic) | #e0e7ff | #12121a | 12.8:1 | Pass |
+| Accent (Aurora Violet) | #667eea | #0a0a0f | 5.3:1 | Pass |
 
 #### 스크린 리더 지원
 | Component | Aria Label | Role |
@@ -378,17 +406,33 @@ DATABASE_URL=postgresql://...     # DB 연결
 
 1. **그래프 렌더링**
    - 노드 30개 이하 유지
-   - 2D만 사용 (3D 제외)
-   - cooldownTicks로 초기 레이아웃 시간 제한
+   - Canvas 2D 자체 구현 (외부 라이브러리 의존 제거)
+   - requestAnimationFrame 기반 렌더 루프
 
 2. **번들 사이즈**
-   - react-force-graph-2d dynamic import
-   - SSR 비활성화로 hydration 문제 방지
+   - 자체 Canvas 그래프로 react-force-graph-2d 의존성 제거
+   - framer-motion 트리 셰이킹 적용
 
 3. **모바일 최적화**
    - viewport 설정으로 확대/축소 방지
    - safe-area-inset 적용
    - 터치 영역 최소 44px
+
+---
+
+## 화면 구성
+
+| 화면 | 경로 | 설명 |
+|------|------|------|
+| 랜딩 / 저널링 홈 | `/` | World ID 로그인 / 음성 저널링 |
+| Vault 탐색 | `/explore` | 전문가 봇 목록 |
+| 봇 상세 | `/explore/[botId]` | 지식 그래프 + 질문/답변 |
+| 보상 대시보드 | `/rewards` | 파워 레벨, WLD 보상 |
+
+### 공통 UI 요소
+- **AuroraBackground**: 모든 페이지에 적용되는 오로라 그라디언트 배경
+- **BottomNav**: 하단 고정 네비게이션 (Journal / Explore / Reward)
+- **GlassButton**: 3-layer 글래스모피즘 버튼
 
 ---
 
@@ -411,3 +455,7 @@ DATABASE_URL=postgresql://...     # DB 연결
 - nullifier_hash 외 개인정보 저장하지 않음
 - 모든 기여자 식별은 익명
 - GDPR 삭제권 대응 가능
+
+---
+
+*Last Updated: 2026-02-06*
