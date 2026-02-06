@@ -1351,3 +1351,252 @@ Seed Vault MVP
 ---
 
 *Day 5 완료. 해커톤 제출 준비 끝.*
+
+---
+
+## Day 6-7: 해커톤 이후 — 5탭 네비게이션, 커뮤니티, 그리고 인용 시스템
+
+### 해커톤은 끝났지만
+
+해커톤 발표는 끝났다. 근데 멈출 수가 없었다. "이거 조금만 더 다듬으면 진짜 앱 같은데?"
+
+파트너도 같은 생각이었다. 해커톤 끝나고 바로 Sprint 2에 돌입했다.
+
+---
+
+### BottomNav 5탭 확장
+
+3탭(Journal, Explore, Reward)이었던 하단 네비게이션을 5탭으로 확장했다.
+
+```
+[Journal] [Explore] [Community] [Dashboard] [Reward]
+  마이크     지구      사람들      차트       선물
+```
+
+Community와 Dashboard가 추가됐다. 이제 진짜 앱 같은 구조가 됐다.
+
+---
+
+### Dashboard 페이지: GitHub 스타일 히트맵
+
+Dashboard를 새로 만들었다. 핵심 요소:
+
+1. **Stats Row**: 기여 노드 24개, 총 인용 1,847회 (하드코딩 데모 데이터)
+2. **Activity Heatmap**: 66일 히트맵. 22열 × 3행 그리드. seeded random으로 결정론적 데이터 생성
+3. **참여 커뮤니티**: 스타트업 멘토 / World Coin 전문가 / 서울 로컬 가이드 3개 고정
+4. **Recent Contributions**: 5개 목 데이터, 타임라인 UI
+
+Tailwind에 `grid-cols-22`가 없어서 inline style로 해결:
+
+```tsx
+style={{ gridTemplateColumns: 'repeat(22, minmax(0, 1fr))' }}
+```
+
+처음에 커뮤니티 링크를 `bots[0]?.id`로 연결했더니 스타트업 멘토를 클릭하면 worldcoin-expert 페이지가 나왔다. Store에서 봇 순서가 다른 거였다. `bots.find(b => b.id === 'startup-mentor')`로 수정.
+
+---
+
+### Community Detail 페이지
+
+커뮤니티 상세 페이지를 만들었다. 여기서 가장 재밌었던 건 3가지:
+
+#### 1. Graph View 아코디언
+
+멤버/노드/인용 스탯 하단에 "Graph View" 아코디언을 넣었다. 클릭하면 AnimatePresence로 KnowledgeGraph가 펼쳐진다.
+
+```tsx
+<AnimatePresence>
+  {graphOpen && (
+    <motion.div
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: 'auto', opacity: 1 }}
+      exit={{ height: 0, opacity: 0 }}
+    >
+      <KnowledgeGraph bot={bot} />
+    </motion.div>
+  )}
+</AnimatePresence>
+```
+
+#### 2. PUBLISH BOT (출봇 투표)
+
+"출봇"이라는 용어를 만들었다. 봇을 커뮤니티 밖으로 출판(publish)하는 건데, 멤버 투표로 결정한다.
+
+찬성 68% / 반대 18%의 프로그레스 바, 정족수 표시, 찬성/반대 버튼. 투표자 이름은 익명 닉네임 시스템을 만들었다:
+
+```tsx
+const ADJECTIVES = ['배고픈', '졸린', '용감한', '느긋한', '수줍은', ...]
+const ANIMALS = ['호랑이', '판다', '고양이', '거북이', '여우', ...]
+
+function getAnonymousName(hash: string): string {
+  let sum = 0
+  for (let i = 0; i < hash.length; i++) sum += hash.charCodeAt(i)
+  return `${ADJECTIVES[sum % 10]} ${ANIMALS[(sum * 7) % 10]}`
+}
+```
+
+"배고픈 호랑이", "졸린 판다" 같은 닉네임이 해시에서 결정론적으로 생성된다.
+
+#### 3. Weekly Photo Archive
+
+BeReal 스타일의 주간 사진 아카이브. 캡슐 형태 카드:
+
+- 첫 카드: `rounded-l-2xl`, 마지막 카드: `rounded-r-2xl`
+- Week 4부터 Week 1 순서로 (최신순)
+- picsum.photos로 목업 이미지
+
+```tsx
+{[...MOCK_WEEKS].reverse().map((week) => (
+  <div key={week.week}>
+    <span>Week {week.week}</span>
+    <div className="flex gap-[3px] overflow-x-auto">
+      {week.days.map((slot, idx) => (
+        <div className={`w-[72px] aspect-[5/7] ${
+          idx === 0 ? 'rounded-l-2xl' : idx === last ? 'rounded-r-2xl' : ''
+        }`}>
+          <img src={slot.imageUrl} />
+        </div>
+      ))}
+    </div>
+  </div>
+))}
+```
+
+---
+
+### Explore 탭 대수술
+
+Explore 탭이 가장 큰 변화를 겪었다.
+
+#### Payment Gate: 크립토 맛 결제
+
+3D 캐러셀에서 "스토리 보기"를 누르면 바로 상세 페이지로 가는 게 아니라 **PaymentModal**이 뜬다. 크립토 결제 UX를 넣었다:
+
+- 지갑 잔액 표시 (12.47 WLD)
+- USD 환산 (~$0.42)
+- 가스비 표시 (~0.0001 WLD)
+- 3단계 확인 애니메이션 (confirmStep 1/3 → 2/3 → 3/3 + 프로그레스 바)
+- 영수증 화면 (tx hash, from/to, amount, block, network)
+
+캐러셀에 `paused` prop도 추가했다. 결제 모달이 열리면 카드 자동 회전이 멈춘다.
+
+```tsx
+useEffect(() => {
+  if (paused) {
+    if (autoTimerRef.current) clearInterval(autoTimerRef.current)
+    return
+  }
+  autoTimerRef.current = setInterval(handleNext, 1500)
+  return () => { if (autoTimerRef.current) clearInterval(autoTimerRef.current) }
+}, [handleNext, paused])
+```
+
+#### 스토리 콘텐츠 뷰
+
+상세 페이지 구조를 완전히 바꿨다:
+
+- 1st row: 검색 바
+- 2nd row: Knowledge Graph
+- 3rd row: 장문 스토리 텍스트 (bot.description + 노드 6개의 label/content)
+
+기존의 통계 칩(노드/연결/인용), 예상 질문, Top Contributors, Contribution Receipt 전부 제거.
+
+#### 인용 시스템: [1][2] 마커 + 전체화면 모달
+
+가장 공들인 기능. 각 문단 끝에 `[1][2]` 인용 마커가 달린다. 클릭하면 **화면 정중앙 전체화면 모달**이 뜬다:
+
+- 반투명 backdrop (`bg-black/60 backdrop-blur-sm`)
+- 모달: `max-w-[390px]` 모바일 최적화, scale 애니메이션
+- "원본 문서" 뷰: 주변 텍스트 + **하이라이트된 인용 부분** (`bg-aurora-cyan/20 border-l-2 border-aurora-cyan`)
+- 하단: 익명 기여자 이름, 인용 횟수, 날짜
+
+framer-motion에서 `x: '-50%', y: '-50%'`를 직접 관리해야 한다는 걸 배웠다. Tailwind의 `-translate-x/y-1/2`가 motion의 scale 애니메이션에 덮어씌워지기 때문:
+
+```tsx
+<motion.div
+  initial={{ opacity: 0, scale: 0.92, x: '-50%', y: '-50%' }}
+  animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+  exit={{ opacity: 0, scale: 0.92, x: '-50%', y: '-50%' }}
+  className="fixed left-1/2 top-1/2 z-[70] max-w-[390px] ..."
+>
+```
+
+질문 답변의 인용도 같은 전체화면 모달을 사용하도록 통합했다. 기존의 작은 팝업(`citationPopup`)을 제거하고 `storyCitationPopup` 하나로 통일.
+
+---
+
+### Knowledge Graph: 20개 노드가 안 보이던 문제
+
+스타트업 멘토 봇에 노드를 20개로 늘렸는데, 그래프에 6개밖에 안 보였다.
+
+**원인**: `.env.local`에 Supabase가 설정되어 있어서 mock 데이터(20개) 대신 **Supabase DB 데이터(6개)**를 불러오고 있었다.
+
+**해결**: `fetchAllBots`에서 Supabase 데이터와 mock 데이터를 병합하는 로직 추가:
+
+```tsx
+const supabaseBots = await api.getAllBots()
+return supabaseBots.map(sb => {
+  const mockBot = baseExpertBots.find(mb => mb.id === sb.id)
+  if (mockBot && mockBot.graph.nodes.length > sb.graph.nodes.length) {
+    return { ...sb, graph: mockBot.graph, nodeCount: mockBot.graph.nodes.length }
+  }
+  return sb
+})
+```
+
+mock 데이터의 그래프가 더 풍부하면 mock 것을 사용한다. 데모에서 항상 풍부한 그래프가 보이도록.
+
+force simulation도 조정했다:
+- `charge strength`: `-60` (적당한 반발)
+- `link distance`: `35` (컴팩트 배치)
+- `center strength`: `0.3` (중앙 집중)
+- `nodeRadius`: `3 → 5px` (더 잘 보이게)
+- `zoomToFit` 4회 시도 (100ms/500ms/1500ms/3000ms)
+
+---
+
+### Day 6-7 결과
+
+**새로운 페이지:**
+- Dashboard (`/dashboard`) — 히트맵, 커뮤니티, 기여 타임라인
+- Community Detail (`/community/[id]`) — 그래프 아코디언, 출봇 투표, 주간 사진
+
+**주요 변경:**
+- BottomNav: 3탭 → 5탭
+- Explore: PaymentModal 게이트 + 스토리 콘텐츠 뷰
+- 인용 시스템: [1][2] 마커 + 전체화면 모달
+- KnowledgeGraph: force 튜닝 + Supabase/mock 병합
+
+**변경 파일**: 15+ 파일
+**코드 변경**: +3,500 / -800 lines
+
+---
+
+### Day 6-7 기술 정리
+
+#### 새로운 패턴
+
+| 패턴 | 설명 |
+|------|------|
+| Supabase/Mock 병합 | DB 데이터 + 로컬 mock 데이터 중 풍부한 쪽 사용 |
+| 익명 닉네임 시스템 | 해시 → 결정론적 형용사+동물 조합 |
+| 전체화면 인용 모달 | framer-motion x/y translate + scale 동시 관리 |
+| 캐러셀 일시정지 | paused prop으로 모달 열릴 때 자동 회전 중지 |
+
+#### 주요 변경 파일
+
+| 파일 | 변경 |
+|------|------|
+| `BottomNav.tsx` | 5탭 확장, Community/Dashboard 추가 |
+| `dashboard/page.tsx` | 신규 — 히트맵, 커뮤니티, 기여 타임라인 |
+| `community/[id]/page.tsx` | 신규 — 그래프 아코디언, 출봇 투표, 사진 아카이브 |
+| `explore/page.tsx` | PaymentModal 게이트 추가, Carousel paused |
+| `explore/[botId]/page.tsx` | 스토리 뷰, 인용 모달, Receipt/Sources 제거 |
+| `Carousel3D.tsx` | paused prop, button → onBotSelect |
+| `PaymentModal.tsx` | 크립토 UX (3단계 확인, 영수증) |
+| `KnowledgeGraph.tsx` | force 튜닝, 노드 크기 증가 |
+| `mock-data.ts` | startup-mentor 20 노드, Supabase 병합 |
+
+---
+
+*Sprint 2 완료. 이제 진짜 앱처럼 보인다.*

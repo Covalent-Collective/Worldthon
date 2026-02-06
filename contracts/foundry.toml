@@ -1,0 +1,9 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.24"
+
+[rpc_endpoints]
+worldchain = "${WORLD_CHAIN_RPC}"
+worldchain_testnet = "${WORLD_CHAIN_TESTNET_RPC}"

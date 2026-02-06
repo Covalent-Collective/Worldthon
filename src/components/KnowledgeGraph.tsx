@@ -183,11 +183,20 @@ export function KnowledgeGraph({
   const [isStabilized, setIsStabilized] = useState(false)
   const getCitationCount = useCitationStore((state) => state.getCitationCount)
 
+  // Configure forces: compact but non-overlapping, fits initial viewport
+  useEffect(() => {
+    if (graphRef.current) {
+      graphRef.current.d3Force('charge')?.strength(-60)
+      graphRef.current.d3Force('link')?.distance(35)
+      graphRef.current.d3Force('center')?.strength(0.3)
+      graphRef.current.d3ReheatSimulation()
+    }
+  }, [bot.id, bot.graph.nodes.length])
+
   // Zoom out to fit all nodes after graph stabilizes
   useEffect(() => {
     if (graphRef.current && isStabilized) {
-      // Zoom to fit all nodes with generous padding
-      graphRef.current.zoomToFit(400, 100)
+      graphRef.current.zoomToFit(300, 20)
     }
   }, [isStabilized])
 
@@ -250,12 +259,13 @@ export function KnowledgeGraph({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [bot.id, bot.graph.nodes.length, bot.graph.edges.length])
 
-  // Initial zoom out on data change
+  // Initial zoom out on data change — multiple attempts to ensure all nodes fit
   useEffect(() => {
     if (graphRef.current) {
-      setTimeout(() => {
-        graphRef.current?.zoomToFit(200, 80)
-      }, 100)
+      setTimeout(() => graphRef.current?.zoomToFit(200, 20), 100)
+      setTimeout(() => graphRef.current?.zoomToFit(200, 20), 500)
+      setTimeout(() => graphRef.current?.zoomToFit(200, 20), 1500)
+      setTimeout(() => graphRef.current?.zoomToFit(200, 20), 3000)
     }
   }, [graphData])
 
@@ -312,9 +322,9 @@ export function KnowledgeGraph({
           onNodeClick={handleNodeClick}
           onNodeHover={(node) => setHoverNode(node ? (node as GraphNode).id : null)}
           onEngineStop={() => setIsStabilized(true)}
-          warmupTicks={100}
-          cooldownTicks={0}
-          cooldownTime={0}
+          warmupTicks={200}
+          cooldownTicks={100}
+          cooldownTime={3000}
           d3AlphaDecay={0.02}
           d3VelocityDecay={0.3}
           d3AlphaMin={0.001}
@@ -380,8 +390,8 @@ export function KnowledgeGraph({
               }
             }
 
-            const baseRadius = 3
-            let radius = isHighlighted || isHovered ? baseRadius + 1.5 : baseRadius
+            const baseRadius = 5
+            let radius = isHighlighted || isHovered ? baseRadius + 2 : baseRadius
 
             // Expand radius slightly when wave hits
             if (searchWaveHit) {

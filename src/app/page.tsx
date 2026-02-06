@@ -1,28 +1,97 @@
 'use client'
 
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useUserStore } from '@/stores/userStore'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
-import { expertBots } from '@/lib/mock-data'
+import { useBotsStore } from '@/stores/botsStore'
 import { BottomNav } from '@/components/BottomNav'
 import { JournalingHome } from '@/components/JournalingHome'
 import { AuroraBackground } from '@/components/AuroraBackground'
+import { getGlobalStats, subscribeToGlobalStats } from '@/lib/api'
 
 export default function LandingPage() {
   const { isVerified, globalStats } = useUserStore()
   const getTotalContributedNodes = useKnowledgeStore((state) => state.getTotalContributedNodes)
+  const { bots, loadBots } = useBotsStore()
   const [mounted, setMounted] = useState(false)
+  const [statsLoaded, setStatsLoaded] = useState(false)
+  const [liveStats, setLiveStats] = useState<{
+    totalNodes: number
+    totalContributors: number
+    totalBots: number
+  } | null>(null)
 
   const totalContributedNodes = getTotalContributedNodes()
-  const baseNodeCount = expertBots.reduce((sum, bot) => sum + bot.graph.nodes.length, 0)
+
+  // Compute fallback stats from mock data when Supabase is not configured
+  const mockStats = useMemo(() => {
+    if (bots.length === 0) return null
+    const totalNodes = bots.reduce((sum, bot) => sum + bot.graph.nodes.length, 0)
+    const uniqueContributors = new Set(
+      bots.flatMap(bot => bot.graph.nodes.map(n => n.contributor))
+    ).size
+    return {
+      totalNodes,
+      totalContributors: uniqueContributors,
+      totalBots: bots.length
+    }
+  }, [bots])
+
+  // Determine which stats to display: live Supabase > store globalStats > mock fallback
+  const displayStats = useMemo(() => {
+    if (liveStats && (liveStats.totalNodes > 0 || liveStats.totalBots > 0)) {
+      return liveStats
+    }
+    if (globalStats.totalNodes > 0 || globalStats.totalBots > 0) {
+      return globalStats
+    }
+    if (mockStats) {
+      return mockStats
+    }
+    return { totalNodes: 0, totalContributors: 0, totalBots: 0 }
+  }, [liveStats, globalStats, mockStats])
+
   const realTotalNodes = useMemo(
-    () => baseNodeCount + totalContributedNodes,
-    [baseNodeCount, totalContributedNodes]
+    () => displayStats.totalNodes + totalContributedNodes,
+    [displayStats.totalNodes, totalContributedNodes]
   )
 
-  useEffect(() => {
-    setMounted(true)
+  // Fetch global stats from Supabase on mount, subscribe to realtime updates
+  const fetchStats = useCallback(async () => {
+    try {
+      const stats = await getGlobalStats()
+      if (stats) {
+        setLiveStats({
+          totalNodes: stats.total_nodes,
+          totalContributors: stats.total_contributors,
+          totalBots: stats.total_bots
+        })
+      }
+    } catch {
+      // Supabase not configured or network error - fallback to mock data
+    } finally {
+      setStatsLoaded(true)
+    }
   }, [])
+
+  useEffect(() => {
+    loadBots()
+    fetchStats()
+    setMounted(true)
+
+    // Subscribe to realtime global stats updates
+    const subscription = subscribeToGlobalStats((stats) => {
+      setLiveStats({
+        totalNodes: stats.total_nodes,
+        totalContributors: stats.total_contributors,
+        totalBots: stats.total_bots
+      })
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [loadBots, fetchStats])
 
   if (!mounted) {
     return null
@@ -68,23 +137,30 @@ export default function LandingPage() {
             <span className="text-arctic/80">검증된 인간 지식</span>의 보존소
           </p>
 
-          {/* Login Button */}
-          <button
-            onClick={() => {
-              useUserStore.getState().setVerified(true, '0x' + Math.random().toString(16).slice(2, 10) + '...anon')
-            }}
-            className="w-full max-w-[280px]"
-          >
-            <div className="glass-btn-wrap rounded-2xl w-full">
-              <div className="glass-btn rounded-2xl w-full">
-                <span className="glass-btn-text flex items-center justify-center gap-3 py-4 text-sm font-bold">
-                  <img src="/worldcoin-logo.svg" alt="Worldcoin" className="w-5 h-5" />
-                  World ID로 시작하기
-                </span>
+          {/* Login Button — dev only (프로덕션에서는 World ID MiniKit 사용) */}
+          {process.env.NODE_ENV === 'development' && (
+            <button
+              onClick={() => {
+                useUserStore.getState().setVerified(true, {
+                  token: 'dev_token_' + Date.now(),
+                  userId: 'dev_user_' + Math.random().toString(16).slice(2, 10),
+                  verificationLevel: 'orb',
+                  nullifierHash: '0x' + Math.random().toString(16).slice(2, 10) + '...anon'
+                })
+              }}
+              className="w-full max-w-[280px]"
+            >
+              <div className="glass-btn-wrap rounded-2xl w-full">
+                <div className="glass-btn rounded-2xl w-full">
+                  <span className="glass-btn-text flex items-center justify-center gap-3 py-4 text-sm font-bold">
+                    <img src="/worldcoin-logo.svg" alt="Worldcoin" className="w-5 h-5" />
+                    World ID로 시작하기
+                  </span>
+                </div>
+                <div className="glass-btn-shadow rounded-2xl" />
               </div>
-              <div className="glass-btn-shadow rounded-2xl" />
-            </div>
-          </button>
+            </button>
+          )}
 
           <p className="text-arctic/40 text-xs font-mono">
             Orb 인증으로 지식을 기여하고 보상받으세요
@@ -92,9 +168,9 @@ export default function LandingPage() {
 
           {/* Stats */}
           <div className="flex gap-3 pt-4">
-            <StatCard label="노드" value={realTotalNodes} />
-            <StatCard label="기여자" value={globalStats.totalContributors} />
-            <StatCard label="Vault" value={globalStats.totalBots} />
+            <StatCard label="노드" value={realTotalNodes} loading={!statsLoaded && realTotalNodes === 0} />
+            <StatCard label="기여자" value={displayStats.totalContributors} loading={!statsLoaded && displayStats.totalContributors === 0} />
+            <StatCard label="Vault" value={displayStats.totalBots} loading={!statsLoaded && displayStats.totalBots === 0} />
           </div>
         </div>
       </div>
@@ -102,7 +178,7 @@ export default function LandingPage() {
   )
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({ label, value, loading = false }: { label: string; value: number; loading?: boolean }) {
   const [isAnimating, setIsAnimating] = useState(false)
   const prevValueRef = useRef(value)
 
@@ -122,7 +198,7 @@ function StatCard({ label, value }: { label: string; value: number }) {
           isAnimating ? 'scale-125 text-aurora-cyan' : 'scale-100 text-arctic'
         }`}
       >
-        {value}
+        {loading ? '...' : value}
       </div>
       <div className="text-xs text-arctic/50 font-mono mt-1">{label}</div>
     </div>

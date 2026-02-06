@@ -1,23 +1,23 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { verifyHuman, getActionId, isInWorldApp } from '@/lib/minikit'
+import { verifyWithServer, getActionId, isInWorldApp } from '@/lib/minikit'
 import { useUserStore } from '@/stores/userStore'
 
 export function useWorldId() {
   const [isVerifying, setIsVerifying] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { isVerified, setVerified, nullifierHash } = useUserStore()
+  const { isVerified, verificationLevel, setVerified, nullifierHash } = useUserStore()
 
   const verify = useCallback(async () => {
     setIsVerifying(true)
     setError(null)
 
     try {
-      const result = await verifyHuman(getActionId())
+      const result = await verifyWithServer(getActionId())
 
       if (result) {
-        setVerified(true, result.nullifier_hash)
+        await setVerified(true, result)
         return true
       } else {
         setError('인증에 실패했습니다. 다시 시도해주세요.')
@@ -39,6 +39,7 @@ export function useWorldId() {
   return {
     isVerified,
     isVerifying,
+    verificationLevel,
     error,
     nullifierHash,
     verify,

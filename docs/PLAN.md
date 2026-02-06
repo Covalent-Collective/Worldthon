@@ -57,6 +57,22 @@
 - [x] Top Contributors 가로 바 그래프
 - [x] 기술 블로그 Day 5 작성
 
+### Sprint 2: Post-Hackathon Polish (Day 6-7)
+- [x] BottomNav 5탭 확장 (Community, Dashboard 추가)
+- [x] Dashboard 페이지 구현 (히트맵, 커뮤니티, 기여 타임라인)
+- [x] Community Detail 페이지 (그래프 아코디언, 출봇 투표, 주간 사진 아카이브)
+- [x] Explore PaymentModal 게이트 (크립토 결제 UX)
+- [x] Carousel3D 일시정지 (모달 오픈 시)
+- [x] Explore 스토리 콘텐츠 뷰 (장문 텍스트 + 노드 콘텐츠)
+- [x] 인용 시스템 구현 ([1][2] 마커 + 전체화면 모달)
+- [x] 답변 인용도 전체화면 모달 통합
+- [x] KnowledgeGraph force 튜닝 (20노드 표시)
+- [x] Supabase/Mock 데이터 병합 로직
+- [x] 익명 닉네임 시스템 (배고픈 호랑이 등)
+- [x] startup-mentor 노드 20개 확장
+- [x] Contribution Receipt / 참고 노드 제거 (UI 간소화)
+- [x] 기술 블로그 Day 6-7 작성
+
 ---
 
 ## MVP 우선순위 (MoSCoW)
@@ -92,6 +108,9 @@
 | Vault 탐색 | `/explore` | 3D 카루셀로 전문가 봇 탐색 |
 | 봇 상세 | `/explore/[botId]` | 지식 그래프 + 질문/답변 + 기여 영수증 |
 | 보상 대시보드 | `/rewards` | 파워 레벨, WLD 보상, 거래 로그 |
+| 커뮤니티 | `/community` | 커뮤니티 목록 |
+| 커뮤니티 상세 | `/community/[id]` | 그래프 아코디언, 출봇 투표, 사진 아카이브 |
+| 대시보드 | `/dashboard` | 히트맵, 커뮤니티, 기여 타임라인 |
 
 ---
 

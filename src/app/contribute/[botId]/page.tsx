@@ -1,29 +1,54 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getBotById } from '@/lib/mock-data'
+import { keccak256, toHex } from 'viem'
+import { useBotsStore } from '@/stores/botsStore'
 import { useUserStore } from '@/stores/userStore'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { VerifyButton } from '@/components/VerifyButton'
+import { recordContributionOnChain, isContractConfigured } from '@/lib/contract'
+import { commitToSegment } from '@/lib/zk-segments'
 import type { KnowledgeNode } from '@/lib/types'
 
 export default function ContributePage() {
   const params = useParams()
   const router = useRouter()
   const botId = params.botId as string
-  const bot = getBotById(botId)
 
-  const { isVerified, nullifierHash, addContribution } = useUserStore()
+  const { getBotById: getStoreBotById, loadBots, isLoaded } = useBotsStore()
+
+  useEffect(() => { loadBots() }, [loadBots])
+
+  const bot = getStoreBotById(botId)
+
+  const { isVerified, verificationLevel, nullifierHash, addContribution } = useUserStore()
   const { addNode, getContributionCount } = useKnowledgeStore()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [onChainRecorded, setOnChainRecorded] = useState(false)
+
+  // Determine if contributions are allowed (Orb only)
+  const isDeviceOnly = isVerified && verificationLevel === 'device'
+  const canContribute = isVerified && !isDeviceOnly
 
   // Get current contribution count for this bot
   const contributionCount = getContributionCount(botId)
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex gap-1">
+          <div className="w-2 h-2 bg-aurora-cyan rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+          <div className="w-2 h-2 bg-aurora-cyan rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+          <div className="w-2 h-2 bg-aurora-cyan rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+        </div>
+      </div>
+    )
+  }
 
   if (!bot) {
     return (
@@ -53,6 +78,36 @@ export default function ContributePage() {
         citationCount: 0
       }
       addNode(botId, newNode)
+
+      // On-chain recording (fire-and-forget, supplementary to DB)
+      // 컨트랙트가 설정된 경우에만 온체인 기록 시도
+      if (isContractConfigured()) {
+        const contentHash = keccak256(toHex(content))
+        recordContributionOnChain(contentHash, botId)
+          .then((result) => {
+            if (result) {
+              console.log('[ON-CHAIN] Contribution tx:', result.transactionId)
+              setOnChainRecorded(true)
+            }
+          })
+          .catch(() => {
+            // 온체인 기록 실패는 무시 - DB 기록이 우선
+          })
+      }
+
+      // ZK 세그먼트 등록 (fire-and-forget, 기존 플로우 차단 안 함)
+      // Enroll user in the category's ZK segment for privacy-preserving matching
+      if (nullifierHash && bot.category) {
+        commitToSegment(nullifierHash, bot.category)
+          .then((result) => {
+            if (result) {
+              console.log('[ZK-SEGMENT] Committed to segment, tx:', result.transactionId)
+            }
+          })
+          .catch(() => {
+            // ZK 세그먼트 등록 실패는 무시 - 핵심 기능이 아님
+          })
+      }
 
       setShowSuccess(true)
     } catch (error) {
@@ -121,6 +176,17 @@ export default function ContributePage() {
             +5 Contribution Power
           </div>
 
+          {/* On-chain confirmation badge */}
+          {onChainRecorded && (
+            <div className="inline-flex items-center gap-1.5 bg-green-500/10 text-green-400 px-3 py-1.5 rounded-full text-xs font-medium border border-green-500/20">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.172 13.828a4 4 0 015.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" />
+              </svg>
+              On-chain
+            </div>
+          )}
+
           <p className="text-arctic/40 text-xs">
             다른 사용자가 인용할 때마다 WLD를 받게 됩니다
           </p>
@@ -159,18 +225,27 @@ export default function ContributePage() {
 
       <div className="flex-1 p-4 space-y-6">
         {/* Step 1: Verification */}
-        <div className={`glass rounded-xl p-4 ${isVerified ? 'border border-green-500/30' : ''}`}>
+        <div className={`glass rounded-xl p-4 ${isVerified && verificationLevel === 'orb' ? 'border border-green-500/30' : isVerified && verificationLevel === 'device' ? 'border border-amber-500/30' : ''}`}>
           <div className="flex items-center gap-3">
             {isVerified ? (
               <>
-                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center shadow-glow-green">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${verificationLevel === 'orb' ? 'bg-green-500 shadow-glow-green' : 'bg-amber-500'}`}>
                   <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
                 <div>
-                  <p className="font-medium text-green-400">본인 인증 완료</p>
-                  <p className="text-sm text-green-400/70">World ID Orb로 인증됨</p>
+                  {verificationLevel === 'orb' ? (
+                    <>
+                      <p className="font-medium text-green-400">본인 인증 완료</p>
+                      <p className="text-sm text-green-400/70">World ID Orb로 인증됨</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium text-amber-400">Device 인증</p>
+                      <p className="text-sm text-amber-400/70">기여하려면 Orb 인증이 필요합니다</p>
+                    </>
+                  )}
                 </div>
               </>
             ) : (
@@ -193,8 +268,35 @@ export default function ContributePage() {
           )}
         </div>
 
+        {/* Device-only verification warning */}
+        {isDeviceOnly && (
+          <div className="glass rounded-xl p-4 border border-amber-500/30 bg-amber-500/5">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-amber-400">
+                  Orb 인증이 필요합니다
+                </p>
+                <p className="text-xs text-amber-400/70">
+                  Device 인증으로는 지식 기여가 제한됩니다. Orb 인증을 완료하면 기여할 수 있습니다.
+                </p>
+                <a
+                  href="https://worldcoin.org/world-id"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block text-xs text-aurora-cyan underline hover:text-aurora-cyan/80 transition-colors"
+                >
+                  Orb 인증 방법 알아보기
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Step 2: Input Form */}
-        <div className={`space-y-4 ${!isVerified ? 'opacity-50 pointer-events-none' : ''}`}>
+        <div className={`space-y-4 ${!canContribute ? 'opacity-50 pointer-events-none' : ''}`}>
           <div className="flex items-center gap-3">
             <div className="w-6 h-6 bg-aurora-cyan rounded-full flex items-center justify-center text-permafrost text-xs font-bold">
               2
@@ -211,7 +313,7 @@ export default function ContributePage() {
                 onChange={e => setTitle(e.target.value)}
                 placeholder="예: 망리단길 숨은 카페"
                 className="w-full input-dark"
-                disabled={!isVerified}
+                disabled={!canContribute}
               />
             </div>
 
@@ -223,14 +325,14 @@ export default function ContributePage() {
                 placeholder="당신만 아는 지식을 공유해주세요... (최소 20자)"
                 rows={6}
                 className="w-full textarea-dark"
-                disabled={!isVerified}
+                disabled={!canContribute}
               />
               <p className="text-xs text-arctic/40 text-right">{content.length}/2000</p>
             </div>
 
             <button
               type="submit"
-              disabled={!isVerified || !title.trim() || content.length < 20 || isSubmitting}
+              disabled={!canContribute || !title.trim() || content.length < 20 || isSubmitting}
               className="w-full btn-primary rounded-full"
             >
               {isSubmitting ? '추가 중...' : '지식 노드 추가하기'}

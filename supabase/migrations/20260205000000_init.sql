@@ -65,7 +65,7 @@ INSERT INTO bots (id, name, description, icon, category) VALUES
   ('worldcoin-expert', 'World Coin 전문가', 'World ID, WLD 토큰, Orb 인증에 대한 모든 것', '🌐', 'Web3'),
   ('seoul-local-guide', '서울 로컬 가이드', '서울의 숨은 명소와 맛집', '🗺️', '여행'),
   ('obgyn-specialist', '산부인과 전문의', '임신, 출산, 여성 건강 전문 지식', '👩‍⚕️', '의료'),
-  ('korean-recipes', '한식 레시피 마스터', '전통 한식부터 현대적 퓨전까지', '🍲', '요리'),
+  ('korean-recipes', '조림 마스터', '최강록 셰프의 조림 비법과 한식 요리 노하우', '🍲', '요리'),
   ('startup-mentor', '스타트업 멘토', '창업, 투자, 스케일업 경험 공유', '🚀', '비즈니스')
 ON CONFLICT (id) DO NOTHING;
 

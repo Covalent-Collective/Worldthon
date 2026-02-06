@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { recordCitations } from '@/lib/api'
 
 interface CitationEvent {
   nodeId: string
@@ -11,8 +12,8 @@ interface CitationState {
   citations: Record<string, number>
   // Track recent citations for animation purposes
   recentCitations: CitationEvent[]
-  // Record a citation for multiple nodes
-  recordCitation: (nodeIds: string[]) => void
+  // Record a citation for multiple nodes (with optional context for Supabase sync)
+  recordCitation: (nodeIds: string[], context?: string) => void
   // Get the total citation count (base + additional)
   getCitationCount: (nodeId: string, baseCount: number) => number
   // Check if a node was recently cited (for animation)
@@ -21,17 +22,33 @@ interface CitationState {
   clearRecentCitation: (nodeId: string) => void
   // Get all recent citation node IDs
   getRecentlycitedNodes: () => string[]
+  // Per-page-visit session ID for Supabase citation tracking
+  _sessionId: string
 }
 
 const RECENT_CITATION_WINDOW_MS = 3000 // 3 seconds for animation window
+
+// Generate a stable session ID per store initialization (page visit)
+const generateSessionId = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  // Fallback for environments without crypto.randomUUID
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
 
 export const useCitationStore = create<CitationState>()(
   persist(
     (set, get) => ({
       citations: {},
       recentCitations: [],
+      _sessionId: generateSessionId(),
 
-      recordCitation: (nodeIds: string[]) => {
+      recordCitation: (nodeIds: string[], context?: string) => {
         const now = Date.now()
         set((state) => {
           const newCitations = { ...state.citations }
@@ -54,6 +71,10 @@ export const useCitationStore = create<CitationState>()(
             ]
           }
         })
+
+        // Sync citations to Supabase (fire-and-forget)
+        const sessionId = get()._sessionId
+        recordCitations(nodeIds, sessionId, context || null).catch(console.error)
       },
 
       getCitationCount: (nodeId: string, baseCount: number) => {
@@ -88,7 +109,12 @@ export const useCitationStore = create<CitationState>()(
       }
     }),
     {
-      name: 'seed-vault-citations'
+      name: 'seed-vault-citations',
+      // Only persist citation counts; sessionId regenerates per page visit,
+      // recentCitations are ephemeral animation state
+      partialize: (state) => ({
+        citations: state.citations
+      })
     }
   )
 )
