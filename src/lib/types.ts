@@ -18,6 +18,7 @@ export interface ExpertBot {
   name: string
   description: string
   icon: string
+  profileImage?: string
   category: string
   nodeCount: number
   contributorCount: number

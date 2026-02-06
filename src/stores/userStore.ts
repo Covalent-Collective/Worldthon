@@ -50,10 +50,14 @@ export const useUserStore = create<UserState>()(
       nullifierHash: null,
       userId: null,
       rewards: {
-        contributionPower: 0,
-        totalCitations: 0,
-        pendingWLD: 0,
-        contributions: []
+        contributionPower: 37,
+        totalCitations: 128,
+        pendingWLD: 6.666666,
+        contributions: [
+          { botId: 'world-coin', nodeId: 'node-wc-001', createdAt: '2025-01-15T09:30:00Z' },
+          { botId: 'seoul-guide', nodeId: 'node-sg-001', createdAt: '2025-01-22T14:20:00Z' },
+          { botId: 'doctor', nodeId: 'node-dc-001', createdAt: '2025-02-01T11:45:00Z' },
+        ]
       },
       globalStats: {
         totalNodes: 192,

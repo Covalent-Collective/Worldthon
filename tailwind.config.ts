@@ -97,6 +97,7 @@ const config: Config = {
       fontFamily: {
         sans: ['var(--font-geist-sans)', '-apple-system', 'BlinkMacSystemFont', 'Pretendard', 'sans-serif'],
         mono: ['var(--font-geist-mono)', 'Menlo', 'Monaco', 'monospace'],
+        digital: ['var(--font-orbitron)', 'monospace'],
       },
 
       // ===================
@@ -147,6 +148,7 @@ const config: Config = {
         'aurora-shift': 'auroraShift 8s ease-in-out infinite',
         'confetti': 'confetti 3s ease-in-out infinite',
         'bounce-subtle': 'bounceSubtle 2s ease-in-out infinite',
+        'aurora': 'aurora 60s linear infinite',
       },
       keyframes: {
         fadeIn: {
@@ -196,6 +198,10 @@ const config: Config = {
         bounceSubtle: {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-5px)' },
+        },
+        aurora: {
+          'from': { backgroundPosition: '50% 50%, 50% 50%' },
+          'to': { backgroundPosition: '350% 50%, 350% 50%' },
         },
       },
 

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
+import { Orbitron } from 'next/font/google'
 import './globals.css'
 import { MiniKitProvider } from '@/components/MiniKitProvider'
 
@@ -12,6 +13,11 @@ const geistMono = localFont({
   src: './fonts/GeistMonoVF.woff',
   variable: '--font-geist-mono',
   weight: '100 900',
+})
+const orbitron = Orbitron({
+  subsets: ['latin'],
+  variable: '--font-orbitron',
+  weight: ['400', '700'],
 })
 
 export const metadata: Metadata = {
@@ -48,7 +54,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#0A0A0F" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-permafrost`}
+        className={`${geistSans.variable} ${geistMono.variable} ${orbitron.variable} antialiased bg-permafrost`}
       >
         {/* Background Effects */}
         <div className="fixed inset-0 pointer-events-none">

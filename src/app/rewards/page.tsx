@@ -1,41 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUserStore } from '@/stores/userStore'
 import { BottomNav } from '@/components/BottomNav'
 import { expertBots } from '@/lib/mock-data'
+import { AuroraBackground } from '@/components/AuroraBackground'
 
-// Real-time counter that slowly increments
-function LiveRewardCounter({ baseValue }: { baseValue: number }) {
-  const [value, setValue] = useState(baseValue)
-  const frameRef = useRef<number>(0)
-  const lastTimeRef = useRef<number>(Date.now())
-
-  useEffect(() => {
-    const animate = () => {
-      const now = Date.now()
-      const delta = now - lastTimeRef.current
-
-      // Increment very slowly (0.000001 per second)
-      if (delta > 100) {
-        setValue(prev => prev + 0.000001 * (delta / 1000))
-        lastTimeRef.current = now
-      }
-
-      frameRef.current = requestAnimationFrame(animate)
-    }
-
-    frameRef.current = requestAnimationFrame(animate)
-    return () => cancelAnimationFrame(frameRef.current)
-  }, [])
-
-  return (
-    <span className="tabular-nums">
-      {value.toFixed(6)}
-    </span>
-  )
-}
 
 // Power level visualization
 function PowerMeter({ level, maxLevel = 10 }: { level: number; maxLevel?: number }) {
@@ -58,8 +29,21 @@ function PowerMeter({ level, maxLevel = 10 }: { level: number; maxLevel?: number
   )
 }
 
+// Static mock data for demo
+const STATIC_REWARDS = {
+  contributionPower: 37,
+  totalCitations: 128,
+  pendingWLD: 6.666666,
+  contributions: [
+    { botId: 'world-coin', nodeId: 'node-wc-001', createdAt: '2025-01-15T09:30:00Z' },
+    { botId: 'seoul-guide', nodeId: 'node-sg-001', createdAt: '2025-01-22T14:20:00Z' },
+    { botId: 'doctor', nodeId: 'node-dc-001', createdAt: '2025-02-01T11:45:00Z' },
+  ],
+}
+const STATIC_POWER_LEVEL = Math.min(10, Math.ceil(STATIC_REWARDS.contributionPower / 10))
+
 export default function RewardsPage() {
-  const { isVerified, rewards, claimRewards } = useUserStore()
+  const { isVerified } = useUserStore()
   const [mounted, setMounted] = useState(false)
   const [showClaimSuccess, setShowClaimSuccess] = useState(false)
 
@@ -72,19 +56,16 @@ export default function RewardsPage() {
   }
 
   const handleClaim = () => {
-    if (rewards.pendingWLD > 0) {
-      claimRewards()
-      setShowClaimSuccess(true)
-      setTimeout(() => setShowClaimSuccess(false), 3000)
-    }
+    setShowClaimSuccess(true)
+    setTimeout(() => setShowClaimSuccess(false), 3000)
   }
 
-  // Calculate power level (1-10 based on contribution power)
-  const powerLevel = Math.min(10, Math.ceil(rewards.contributionPower / 10))
+  const rewards = STATIC_REWARDS
+  const powerLevel = STATIC_POWER_LEVEL
 
   if (!isVerified) {
     return (
-      <main className="min-h-screen flex flex-col bg-gradient-to-b from-night via-permafrost to-night">
+      <AuroraBackground className="min-h-screen pb-20">
         <header className="px-5 pt-6 pb-4">
           <h1 className="text-2xl font-bold text-arctic tracking-tight">Reward</h1>
           <p className="text-arctic/50 text-sm mt-1 font-mono">GEOTHERMAL POWER STATION</p>
@@ -111,58 +92,51 @@ export default function RewardsPage() {
         </div>
 
         <BottomNav active="rewards" />
-      </main>
+      </AuroraBackground>
     )
   }
 
   return (
-    <main className="min-h-screen flex flex-col bg-gradient-to-b from-night via-permafrost to-night">
+    <AuroraBackground className="min-h-screen pb-20">
       {/* Header */}
       <header className="px-5 pt-6 pb-4">
         <h1 className="text-2xl font-bold text-arctic tracking-tight">Reward</h1>
         <p className="text-arctic/50 text-sm mt-1 font-mono">GEOTHERMAL POWER STATION</p>
       </header>
 
-      <div className="flex-1 p-5 space-y-5 overflow-auto scrollbar-hide">
-        {/* Power Level Infographic */}
-        <div className="glass-card rounded-2xl p-5 relative overflow-hidden">
-          {/* Background Grid Pattern */}
-          <div className="absolute inset-0 opacity-5">
-            <div className="absolute inset-0" style={{
-              backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
-              backgroundSize: '20px 20px'
-            }} />
-          </div>
-
+      <div className="flex-1 p-5 space-y-4 overflow-auto scrollbar-hide">
+        {/* Power Level Card */}
+        <div className="glass-card rounded-3xl p-5 relative overflow-hidden">
           <div className="relative">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <span className="text-[10px] text-aurora-cyan font-mono tracking-wider">POWER LEVEL</span>
-                <div className="text-3xl font-bold text-arctic mt-1">
+                <p className="text-arctic/50 text-xs font-mono">POWER LEVEL</p>
+                <div className="text-3xl font-bold text-arctic font-digital mt-1">
                   LV.{powerLevel}
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-[10px] text-arctic/40 font-mono">CONTRIBUTION</span>
-                <div className="text-xl font-bold text-aurora-cyan font-mono">
+                <p className="text-arctic/50 text-xs font-mono">CONTRIBUTION</p>
+                <div className="text-xl font-bold text-aurora-cyan font-digital mt-1">
                   {rewards.contributionPower}%
                 </div>
               </div>
             </div>
 
-            {/* Power Meter */}
             <PowerMeter level={powerLevel} />
 
-            {/* Progress to next level */}
             <div className="mt-4 pt-4 border-t border-white/5">
               <div className="flex items-center justify-between text-[10px] text-arctic/40 font-mono mb-2">
                 <span>PROGRESS TO LV.{powerLevel + 1}</span>
                 <span>{rewards.contributionPower % 10}/10</span>
               </div>
-              <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-aurora-violet rounded-full transition-all duration-500"
-                  style={{ width: `${(rewards.contributionPower % 10) * 10}%` }}
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${(rewards.contributionPower % 10) * 10}%`,
+                    background: 'linear-gradient(-20deg, #ddd6f3 0%, #faaca8 100%)',
+                  }}
                 />
               </div>
             </div>
@@ -170,111 +144,109 @@ export default function RewardsPage() {
         </div>
 
         {/* Live Reward Counter */}
-        <div className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-aurora-violet/80 to-aurora-purple/80 backdrop-blur-sm">
-          {/* Animated Background */}
-          <div className="absolute top-0 right-0 w-40 h-40 bg-aurora-cyan/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-aurora-violet/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="relative overflow-hidden rounded-3xl p-5 backdrop-blur-sm" style={{
+          background: 'linear-gradient(-20deg, rgba(221,214,243,0.25) 0%, rgba(250,172,168,0.25) 100%)',
+          border: '1px solid rgba(255,255,255,0.1)',
+        }}>
+          <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl animate-pulse" style={{ background: 'rgba(221,214,243,0.2)' }} />
+          <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full blur-3xl animate-pulse" style={{ background: 'rgba(250,172,168,0.15)', animationDelay: '1s' }} />
 
           <div className="relative">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                <div className="w-5 h-5 bg-white rounded-full" />
-              </div>
+            <div className="flex items-center gap-3 mb-4">
+              <img src="/worldcoin-logo.svg" alt="Worldcoin" className="w-10 h-10" />
               <div>
-                <span className="text-[10px] text-white/60 font-mono tracking-wider">GENERATING</span>
+                <p className="text-arctic/50 text-xs font-mono">PENDING REWARD</p>
                 <div className="flex items-center gap-1">
                   <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                  <span className="text-xs text-white/80">Live</span>
+                  <span className="text-xs text-arctic/70">Accumulating</span>
                 </div>
               </div>
             </div>
 
-            <div className="text-4xl font-bold text-white mb-1 font-mono">
-              <LiveRewardCounter baseValue={rewards.pendingWLD} />
+            <div className="flex items-baseline gap-2">
+              <span className="text-4xl font-bold text-arctic font-digital tabular-nums">
+                {rewards.pendingWLD.toFixed(6)}
+              </span>
+              <span className="text-sm text-arctic/50 font-mono">WLD</span>
             </div>
-            <span className="text-sm text-white/60">WLD</span>
 
-            <button
-              onClick={handleClaim}
-              disabled={rewards.pendingWLD === 0}
-              className="w-full mt-4 py-3.5 bg-white text-aurora-purple rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-white/20 transition-all"
-            >
-              {showClaimSuccess ? 'CLAIMED' : 'CLAIM REWARD'}
+            <button onClick={handleClaim} className="w-full mt-4">
+              <div className="glass-btn-wrap rounded-xl w-full">
+                <div className="glass-btn rounded-xl w-full">
+                  <span className="glass-btn-text block py-3 text-center text-sm font-bold">
+                    {showClaimSuccess ? 'CLAIMED' : 'CLAIM REWARD'}
+                  </span>
+                </div>
+                <div className="glass-btn-shadow rounded-xl" />
+              </div>
             </button>
           </div>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="glass-card rounded-xl p-4">
-            <span className="text-[10px] text-arctic/40 font-mono tracking-wider">CITATIONS</span>
-            <div className="text-2xl font-bold text-arctic font-mono mt-1">{rewards.totalCitations}</div>
+          <div className="glass-card rounded-2xl p-4">
+            <p className="text-arctic/50 text-xs font-mono">CITATIONS</p>
+            <div className="text-2xl font-bold text-arctic font-digital mt-1">{rewards.totalCitations}</div>
           </div>
-          <div className="glass-card rounded-xl p-4">
-            <span className="text-[10px] text-arctic/40 font-mono tracking-wider">NODES</span>
-            <div className="text-2xl font-bold text-arctic font-mono mt-1">{rewards.contributions.length}</div>
+          <div className="glass-card rounded-2xl p-4">
+            <p className="text-arctic/50 text-xs font-mono">NODES</p>
+            <div className="text-2xl font-bold text-arctic font-digital mt-1">{rewards.contributions.length}</div>
           </div>
         </div>
 
-        {/* Terminal-style History */}
+        {/* Transaction Log */}
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-aurora-cyan" />
-            <span className="text-xs text-arctic/60 font-mono tracking-wider">TRANSACTION LOG</span>
-          </div>
+          <p className="text-arctic/50 text-xs font-mono px-1">TRANSACTION LOG</p>
 
-          <div className="glass-card rounded-xl overflow-hidden">
-            {/* Terminal Header */}
-            <div className="h-8 bg-white/5 flex items-center px-3 gap-1.5 border-b border-white/5">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
-              <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
-              <div className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
-              <span className="ml-2 text-[10px] text-arctic/30 font-mono">seed-vault://rewards</span>
-            </div>
-
-            {/* Terminal Content */}
-            <div className="p-3 font-mono text-xs max-h-[200px] overflow-auto scrollbar-hide">
+          <div className="glass-card rounded-2xl overflow-hidden">
+            <div className="p-4 font-mono text-xs max-h-[200px] overflow-auto scrollbar-hide">
               {rewards.contributions.length === 0 ? (
                 <div className="text-arctic/30 py-4 text-center">
-                  <span className="text-aurora-cyan">$</span> No transactions yet_
+                  기여 내역이 없습니다
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {rewards.contributions.slice().reverse().map((contribution, i) => {
                     const bot = expertBots.find(b => b.id === contribution.botId)
                     return (
-                      <div key={i} className="flex items-start gap-2">
-                        <span className="text-aurora-cyan">$</span>
-                        <div className="flex-1">
-                          <span className="text-green-400">+NODE</span>
-                          <span className="text-arctic/50"> {bot?.name || 'Unknown'}</span>
-                          <div className="text-arctic/30 text-[10px]">
-                            {contribution.createdAt.split('T')[0]} | 0 citations
-                          </div>
+                      <div key={i} className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{
+                          background: 'linear-gradient(-20deg, rgba(221,214,243,0.3) 0%, rgba(250,172,168,0.3) 100%)',
+                        }}>
+                          <span className="text-[10px] text-arctic/60">+</span>
                         </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-arctic/80 text-xs truncate">{bot?.name || 'Unknown'}</p>
+                          <p className="text-arctic/30 text-[10px]">
+                            {contribution.createdAt.split('T')[0]}
+                          </p>
+                        </div>
+                        <span className="text-aurora-cyan text-[10px] font-mono">+NODE</span>
                       </div>
                     )
                   })}
-                  <div className="text-arctic/30 animate-pulse">
-                    <span className="text-aurora-cyan">$</span> _
-                  </div>
                 </div>
               )}
             </div>
           </div>
 
           {rewards.contributions.length === 0 && (
-            <Link
-              href="/"
-              className="block text-center text-sm text-aurora-cyan hover:underline font-mono"
-            >
-              {'>'} Start contributing
+            <Link href="/" className="block">
+              <div className="glass-btn-wrap rounded-xl w-full">
+                <div className="glass-btn rounded-xl w-full">
+                  <span className="glass-btn-text block py-3 text-center text-sm font-medium">
+                    기여 시작하기
+                  </span>
+                </div>
+                <div className="glass-btn-shadow rounded-xl" />
+              </div>
             </Link>
           )}
         </div>
       </div>
 
       <BottomNav active="rewards" />
-    </main>
+    </AuroraBackground>
   )
 }

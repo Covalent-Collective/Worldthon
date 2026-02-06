@@ -999,3 +999,355 @@ Write({ file_path: '/Users/jyong/.../fonts/.gitkeep', content: '' })
 ---
 
 *Day 4 심야 세션 완료. 이제 진짜 자야겠다.*
+
+---
+
+## Day 5: 해커톤 당일 — 글래스모피즘, 3D 구체, 그리고 디테일의 전쟁
+
+### 아침: 전면 리디자인의 시작
+
+해커톤 당일 아침. 데모까지 몇 시간 남았는데, 화면을 보니까 뭔가 부족했다.
+
+> "이거 해커톤 프로젝트처럼 생겼어. 진짜 앱처럼은 안 보여."
+
+결심했다. **오늘 남은 시간 전부를 UI 폴리싱에 쓰자.**
+
+---
+
+### Aurora Background: 살아 숨쉬는 배경
+
+첫 번째 문제는 배경이었다. 그냥 검은 화면에 컴포넌트만 올려놓은 느낌.
+
+[aceternity의 aurora-background](https://ui.aceternity.com)를 참고해서 AuroraBackground 컴포넌트를 만들었다. 21st.dev의 MCP를 통해 레퍼런스 코드를 가져왔다.
+
+```tsx
+// AuroraBackground.tsx 핵심
+<div style={{
+  backgroundImage: `repeating-linear-gradient(...)`,
+  backgroundSize: '300%, 200%',
+}}>
+  <motion.div // floating orbs
+    animate={{
+      x: [0, 20, -10, 15, 0],
+      y: [0, -15, 10, -5, 0],
+    }}
+    transition={{ duration: 20, repeat: Infinity }}
+  />
+</div>
+```
+
+CSS `repeating-linear-gradient`에 `animate-aurora` 키프레임을 걸어서 배경이 천천히 흐르고, framer-motion floating orb들이 둥둥 떠다닌다.
+
+**이걸 모든 페이지에 적용했다**: Home, Explore, Reward, Explore Detail.
+
+한 가지 삽질이 있었다. 처음에 Explore 페이지에 그라데이션 오브를 직접 넣었는데, `overflow-hidden`이랑 충돌하면서 이상한 직사각형 두 개가 화면에 나타났다. 스크린샷 찍어보니까 끔찍했다.
+
+> 교훈: 배경 이펙트는 전용 컴포넌트로 분리하자. 페이지 레이아웃이랑 섞으면 반드시 문제가 생긴다.
+
+---
+
+### 3D Voice Orb: CSS로 구체 만들기
+
+Home 화면의 녹음 버튼을 완전히 새로 만들었다. 기존 단순한 원형 버튼 대신 **3D 구체**를 CSS만으로 구현했다.
+
+```
+구체 레이어 구조:
+├── Base gradient (linear-gradient -20deg, #ddd6f3 → #faaca8)
+├── Diffuse light (radial-gradient, 상단 하이라이트)
+├── Specular highlight (흰색 반사광, blur 처리)
+├── Rim light (하단 바이올렛 반사)
+├── Ambient occlusion (하단 그림자)
+├── Volume-reactive color shift (음성 강도에 반응)
+└── Surface shimmer (conic-gradient 회전)
+```
+
+5개의 radial gradient를 겹쳐서 3D 느낌을 낸다. 핵심은 **specular highlight**(상단 밝은 반사)와 **ambient occlusion**(하단 어두운 그림자)의 조합이다.
+
+#### Web Audio API 연동 (... 인 척)
+
+원래 Web Audio API로 실제 마이크 입력을 받아서 구체가 반응하도록 만들었다.
+
+```typescript
+const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+const analyser = ctx.createAnalyser()
+analyser.fftSize = 256
+// 8개 주파수 밴드로 분리 → border-radius 변형
+```
+
+8개 주파수 밴드를 `border-radius` 8개 값에 매핑해서 구체가 음성에 따라 출렁이는 blob morphing을 구현했다.
+
+**근데 데모에서 마이크 권한 팝업이 뜨면 어색하잖아.**
+
+결국 `getUserMedia` 호출을 제거하고 fake 애니메이션만 남겼다. sin/cos 조합으로 자연스럽게 출렁이는 척.
+
+```typescript
+const startAudio = useCallback(() => {
+  const tick = () => {
+    const t = Date.now() / 1000
+    const fakeVol = 0.25 + Math.sin(t * 2) * 0.15 + Math.random() * 0.1
+    setVolume(fakeVol)
+    setFreqBands(Array(8).fill(0).map((_, i) =>
+      0.2 + Math.sin(t * 3 + i * 0.8) * 0.2 + Math.random() * 0.15
+    ))
+    rafRef.current = requestAnimationFrame(tick)
+  }
+  tick()
+}, [])
+```
+
+> 해커톤 팁: "기술적으로 가능하다"를 보여주되, 데모에서는 friction을 최소화하자. 권한 요청 같은 건 실제 유저 테스트 때 붙이면 된다.
+
+---
+
+### 글래스모피즘 디자인 시스템
+
+모든 버튼과 카드를 통일된 글래스모피즘 스타일로 교체했다.
+
+**Glass Button (3-layer 구조):**
+
+```
+glass-btn-wrap (컨테이너)
+├── glass-btn (backdrop-blur + 반투명 배경 + inset shadow)
+│   └── glass-btn-text (콘텐츠)
+└── glass-btn-shadow (하단 그림자)
+```
+
+**Glass Card:**
+```css
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+```
+
+여기서 하나 배운 게 있다. 처음에 키워드/커뮤니티 카드에도 `glass-btn-wrap`을 썼더니 파트너가 바로 지적했다.
+
+> "카드랑 버튼이 같은 radius면 안 되지. 위계가 구분이 안 돼."
+
+맞는 말이다. **카드는 `rounded-3xl`**, **버튼은 `rounded-xl`**로 분리했다. 작은 차이인데 UI 위계가 확 살아났다.
+
+---
+
+### 헤더 통일성 점검
+
+3개 메인 화면의 헤더를 비교해보니 다 달랐다:
+
+| 화면 | 제목 크기 | 패딩 | 서브텍스트 |
+|------|----------|------|----------|
+| Home | `text-xl` | `px-5 pt-5 pb-2` | `text-[10px]` |
+| Explore | `text-2xl` | `px-5 pt-6 pb-4` | `text-sm` |
+| Reward | `text-2xl` | `px-5 pt-6 pb-4` | `text-sm` |
+
+Home만 혼자 달랐다. 전부 `text-2xl`, `px-5 pt-6 pb-4`, `text-sm text-arctic/50 font-mono`로 통일.
+
+---
+
+### Bottom Nav 개선
+
+하단 네비게이션도 문제가 많았다:
+
+1. `sticky` → `fixed`로 변경 (스크롤해도 항상 하단 고정)
+2. 아이콘 교체: Home→마이크, Explore→지구본, Reward→선물상자
+3. 라벨 통일: "Explorer"→"Explore", "Home"→"Journal"
+4. `max-w-[390px]`로 모바일 폭 제한 + 중앙 정렬
+5. 모든 페이지에 `pb-20` 추가 (fixed nav 영역 확보)
+
+```tsx
+<nav className="fixed bottom-0 left-0 right-0 z-50 safe-area-pb flex justify-center">
+  <div className="mx-3 mb-2 rounded-2xl glass-nav w-full max-w-[390px]">
+```
+
+---
+
+### Reward 페이지 테마 통일
+
+Reward 페이지가 가장 불일치가 심했다. 보라색 단색 카드, 터미널 스타일 트래픽 라이트, 흰색 버튼...
+
+**전면 개편:**
+
+| 항목 | Before | After |
+|------|--------|-------|
+| WLD 카드 배경 | `from-aurora-violet/80` 보라색 | 메인 그라데이션 `#ddd6f3→#faaca8` 반투명 |
+| WLD 아이콘 | 흰색 원 2개 (가짜) | 공식 Worldcoin 로고 SVG |
+| Claim 버튼 | `bg-white` plain | `glass-btn-wrap` 통일 |
+| 숫자 폰트 | 기본 | Orbitron (`font-digital`) |
+| Transaction 로그 | 터미널 스타일 ($, 트래픽 라이트) | 깔끔한 glass-card 리스트 |
+| Progress bar | `bg-aurora-violet` 단색 | 메인 그라데이션 적용 |
+
+그리고 **데이터를 static으로 고정**했다. 데모에서 빈 화면이 뜨면 최악이니까.
+
+```typescript
+const STATIC_REWARDS = {
+  contributionPower: 37,  // LV.4
+  totalCitations: 128,
+  pendingWLD: 6.666666,
+  contributions: [
+    { botId: 'world-coin', nodeId: 'node-wc-001', createdAt: '2025-01-15T09:30:00Z' },
+    { botId: 'seoul-guide', nodeId: 'node-sg-001', createdAt: '2025-01-22T14:20:00Z' },
+    { botId: 'doctor', nodeId: 'node-dc-001', createdAt: '2025-02-01T11:45:00Z' },
+  ],
+}
+```
+
+---
+
+### 기여 플로우 단순화
+
+기존: 녹음 → 분석 → 커뮤니티 추천 → **페이지 이동** → 기여
+
+이게 데모에서 너무 길었다. 클릭 3번에 끝나도록 줄였다.
+
+변경: 녹음 → 분석 → Vault 선택 → **기여 완료** (페이지 이동 없음)
+
+```
+idle → recording → processing → complete → contributed
+                                   ↓
+                          Vault 복수 선택 가능
+                          (Set<string> 토글)
+                                   ↓
+                         "N개 Vault에 기여되었습니다"
+                         "+0.003 WLD earned"
+```
+
+"RECOMMENDED COMMUNITIES"도 "RECOMMENDED VAULT"로 변경. 프로젝트 컨셉에 맞게.
+
+---
+
+### 탐색 상세 페이지 개선
+
+Explore Detail 페이지도 전면 개편:
+
+- AuroraBackground 적용
+- 헤더: `glass-dark` → 다른 페이지와 동일 스타일
+- 검색바: `glass rounded-full` → `glass-card rounded-2xl` + 돋보기 아이콘
+- 뒤로가기: `/` → `/explore`
+- Stats: `font-digital` 적용
+- Top Contributors: 텍스트 나열 → **영수증 스타일 가로 바 그래프**
+
+Top Contributors는 영수증 컴포넌트와 비슷한 느낌으로 만들었다:
+
+```tsx
+{contributorData.map(([id, citations], index) => {
+  const percentage = Math.round((citations / maxCitations) * 100)
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <span>{index + 1}. {truncateHash(id)}</span>
+        <span>{citations} citations</span>
+      </div>
+      <div className="h-1.5 bg-white/5 rounded-full">
+        <div style={{
+          width: `${percentage}%`,
+          background: index === 0
+            ? 'linear-gradient(-20deg, #ddd6f3 0%, #faaca8 100%)'
+            : `rgba(102,126,234,${0.6 - index * 0.1})`,
+        }} />
+      </div>
+    </div>
+  )
+})}
+```
+
+1등은 메인 그라데이션, 나머지는 점점 연해지는 바이올렛. 하단에 "총 인용 N회 | 기여도 기반 정렬" 푸터.
+
+---
+
+### 로그인 화면 개선
+
+마지막으로 로그인 화면. 첫인상이 중요하니까.
+
+- AuroraBackground 적용
+- 로고: `aurora-cyan→violet` 그라데이션 → 메인 그라데이션 `#ddd6f3→#faaca8`, 크기 `w-20→w-24`
+- 로그인 버튼: `btn-primary rounded-full` → `glass-btn-wrap rounded-2xl`
+- Worldcoin 아이콘: 흰색 원 2개 → **공식 Worldcoin SVG 로고**
+- StatCard 숫자: `font-digital` (Orbitron) 적용
+- "봇" → "Vault" (컨셉 통일)
+
+---
+
+## Day 5 기술 정리
+
+### 새로 만든 컴포넌트
+
+| 컴포넌트 | 역할 |
+|---------|------|
+| `AuroraBackground.tsx` | 모든 페이지 공통 배경 (aurora 애니메이션 + floating orbs) |
+| `VoiceOrb.tsx` | 3D 구체 음성 입력 UI (CSS gradient 레이어링 + blob morph) |
+
+### 주요 변경 파일
+
+| 파일 | 변경 |
+|------|------|
+| `JournalingHome.tsx` | VoiceOrb 통합, 기여 플로우 단순화 (5단계 state machine), Vault 복수 선택 |
+| `BottomNav.tsx` | sticky→fixed, 아이콘/라벨 교체, max-width 제한 |
+| `rewards/page.tsx` | 전면 테마 통일, static 데이터, Worldcoin 로고 |
+| `explore/[botId]/page.tsx` | AuroraBackground, glass-card 통일, Top Contributors 바 그래프 |
+| `page.tsx` | 로그인 화면 Aurora + glass-btn + Worldcoin 로고 |
+| `DetailedContributionReceipt.tsx` | glass-card 스타일, 메인 그라데이션 progress bar |
+| `tailwind.config.ts` | aurora 키프레임, font-digital 추가 |
+| `layout.tsx` | Orbitron Google Font 추가 |
+
+### 디자인 시스템 (최종)
+
+| 요소 | 스타일 |
+|------|--------|
+| 메인 카드 | `glass-card rounded-3xl` |
+| 서브 카드 | `glass-card rounded-2xl` |
+| 버튼 | `glass-btn-wrap rounded-xl` (3-layer) |
+| 메인 그라데이션 | `linear-gradient(-20deg, #ddd6f3 0%, #faaca8 100%)` |
+| 숫자 폰트 | Orbitron (`font-digital`) |
+| 라벨 폰트 | Geist Mono (`font-mono`) |
+| 헤더 | `text-2xl font-bold text-arctic tracking-tight` + `text-sm text-arctic/50 font-mono` |
+| 페이지 패딩 | `px-5 pt-6 pb-4` (헤더) / `pb-20` (nav 영역) |
+
+### 색상 팔레트 (최종 업데이트)
+
+| 용도 | 색상 | 적용 |
+|------|------|------|
+| 메인 액센트 | `#ddd6f3 → #faaca8` | 구체, progress bar, 1등 기여자, 로고 |
+| 보조 액센트 | `rgba(102,126,234)` | 2등 이하 bar, 서브 강조 |
+| 네온 포인트 | `#00F2FF` (aurora-cyan) | 활성 탭, 수치 강조, 선택 링 |
+| 텍스트 | `#E0E7FF` (arctic) | 메인 텍스트 |
+| 서브 텍스트 | `arctic/50` | 라벨, 설명 |
+
+---
+
+## Day 5 회고
+
+### 잘한 것
+- **UI 일관성에 투자한 시간**: 하나하나 맞추니까 "진짜 앱" 느낌이 났다. 심사위원한테 첫인상이 중요하다.
+- **Static 데이터 전략**: 빈 화면 리스크 제거. 데모에서 항상 보기 좋은 상태 유지.
+- **기여 플로우 단순화**: 페이지 이동 제거로 데모 시간 절약. 3탭이면 끝.
+- **MCP 활용**: 21st.dev magic MCP로 레퍼런스 컴포넌트 빠르게 참조, nano-banana MCP로 프로필 이미지 생성.
+
+### 아쉬운 것
+- **프로필 이미지 3개 미완**: OpenRouter 크레딧 한도로 7개 중 4개만 생성. 나머지는 이모지 fallback.
+- **World ID 실제 연동 못함**: UI 데모에 시간을 다 써버렸다. Mock 인증으로 대체.
+
+### 배운 것
+- **CSS로 3D는 생각보다 된다**: radial-gradient 5개 겹치면 구체가 나온다.
+- **디자인 토큰 통일이 개발 속도를 높인다**: 한번 정해놓으면 고민 없이 적용 가능.
+- **해커톤 UI는 "느낌"이 90%다**: 기능이 10개보다 잘 만든 화면 3개가 낫다.
+
+---
+
+## 최종 앱 구조
+
+```
+Seed Vault MVP
+├── 로그인 (AuroraBackground + Worldcoin 로고 + glass-btn)
+├── Journal (3D VoiceOrb + blob morph + 5단계 flow)
+│   ├── idle → TAP TO START
+│   ├── recording → fake audio visualization
+│   ├── processing → 구체 회전
+│   ├── complete → 키워드 추출 + Vault 복수 선택
+│   └── contributed → 기여 완료 + WLD earned
+├── Explore (3D 캐러셀 + 프로필 이미지)
+│   └── Detail (Knowledge Graph + 검색 + 기여 영수증 + Top Contributors 바 그래프)
+└── Reward (Power Level + WLD counter + Transaction log)
+```
+
+---
+
+*Day 5 완료. 해커톤 제출 준비 끝.*

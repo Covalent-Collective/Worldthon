@@ -350,6 +350,100 @@
 }
 
 /* ===========================================
+   Glass Button Component
+   =========================================== */
+.glass-btn-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.glass-btn {
+  position: relative;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.glass-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0) 50%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+  pointer-events: none;
+}
+
+.glass-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(0, 242, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.glass-btn:active {
+  transform: translateY(0px) scale(0.98);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.glass-btn-text {
+  position: relative;
+  z-index: 2;
+  color: rgba(224, 231, 255, 0.85);
+  transition: color 0.3s ease;
+}
+
+.glass-btn:hover .glass-btn-text {
+  color: rgba(224, 231, 255, 1);
+}
+
+.glass-btn-shadow {
+  position: absolute;
+  bottom: -4px;
+  left: 10%;
+  right: 10%;
+  height: 60%;
+  background: rgba(0, 242, 255, 0.08);
+  filter: blur(12px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glass-btn-wrap:hover .glass-btn-shadow {
+  opacity: 1;
+}
+
+/* Glass Nav variant */
+.glass-nav {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 -4px 24px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* ===========================================
    Keyframe Animations
    =========================================== */
 @keyframes auroraShift {
