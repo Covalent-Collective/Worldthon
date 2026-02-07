@@ -61,28 +61,41 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     try {
+      const verifyBody = {
+        merkle_root,
+        nullifier_hash,
+        proof,
+        action: actionId,
+        verification_level,
+      }
+
+      console.log('[VERIFY] Calling World ID API for app:', appId, 'action:', actionId)
+
       const verifyResponse = await fetch(
         `https://developer.worldcoin.org/api/v2/verify/${appId}`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            merkle_root,
-            nullifier_hash,
-            proof,
-            action: actionId,
-            signal: '',
-          }),
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'NOAH-MiniApp/1.0',
+          },
+          body: JSON.stringify(verifyBody),
         }
       )
 
       if (!verifyResponse.ok) {
+        const errorBody = await verifyResponse.text()
+        console.error('[VERIFY] World ID API error:', verifyResponse.status, errorBody)
         return NextResponse.json(
-          { error: 'Verification failed' },
+          { error: 'Verification failed', detail: errorBody },
           { status: 401 }
         )
       }
-    } catch {
+
+      const verifyData = await verifyResponse.json()
+      console.log('[VERIFY] World ID API success:', verifyData)
+    } catch (err) {
+      console.error('[VERIFY] World ID API network error:', err)
       return NextResponse.json(
         { error: 'Verification service unavailable' },
         { status: 502 }

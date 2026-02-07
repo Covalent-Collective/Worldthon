@@ -49,7 +49,7 @@ export const useAuthStore = create<AuthState>()(
           if (!result) {
             set({
               isLoading: false,
-              error: 'World ID verification failed. Please try again.',
+              error: 'MiniKit verification returned no result.',
             })
             return false
           }

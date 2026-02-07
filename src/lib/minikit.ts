@@ -125,8 +125,9 @@ export const verifyWithServer = async (action: string): Promise<ServerVerifyResu
     })
 
     if (!response.ok) {
-      console.error('[AUTH] Server verification failed:', response.status)
-      return null
+      const errorData = await response.json().catch(() => ({}))
+      console.error('[AUTH] Server verification failed:', response.status, errorData)
+      throw new Error(errorData.detail || errorData.error || `Server error ${response.status}`)
     }
 
     const data = await response.json()
@@ -138,7 +139,7 @@ export const verifyWithServer = async (action: string): Promise<ServerVerifyResu
     }
   } catch (error) {
     console.error('[AUTH] Server verification error:', error)
-    return null
+    throw error
   }
 }
 
