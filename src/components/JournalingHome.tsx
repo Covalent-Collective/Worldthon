@@ -24,41 +24,6 @@ interface RecommendedRepository {
 /** Mock speech-to-text transcript */
 const MOCK_TRANSCRIPT = '매출도 안 나는데 자비를 태워가며 푼돈 벌고, 그 돈으로 클로드 결제하고 멤버들 월급까지 주고 있는 상황이라 고민이 많네. 지금 시점에서 프리 A 투자를 받아야 할지, 받는다면 적정 밸류는 얼마가 좋을지, 혹은 투자를 받음으로써 내가 너무 묶이게 되는 건 아닌지 걱정돼. 특히나 지금 같은 AI 시대에 정말 투자를 받는 게 맞는 방향인지도 의문이고. 다른 사람들은 도대체 어떻게 생각하고 있을까?'
 
-/** Mock recommended feed after analysis */
-interface FeedItem {
-  type: 'warning' | 'insight' | 'example' | 'tip'
-  title: string
-  snippet: string
-  source: string
-}
-
-const MOCK_FEED: FeedItem[] = [
-  {
-    type: 'warning',
-    title: '프리A 30억 받고 시리즈A 못 돌린 스타트업 이야기',
-    snippet: '높은 밸류로 프리A를 받으면 다음 라운드에서 업사이드를 증명해야 하는 부담이 커집니다. 실제로 2024년 프리A 30억 받은 B사는 18개월 만에 런웨이가 바닥나 다운라운드를 제안받았습니다.',
-    source: '졸린 호랑이 · 스타트업의 기쁨과 슬픔',
-  },
-  {
-    type: 'insight',
-    title: 'AI 시대, 투자 없이 매출로 성장하는 기업들',
-    snippet: 'Midjourney는 외부 투자 0원으로 연 매출 2억 달러를 달성했습니다. Basecamp, Mailchimp도 부트스트래핑으로 성장한 대표 사례. 핵심은 Day 1부터 과금 모델을 설계하는 것.',
-    source: '배고픈 판다 · 스타트업의 기쁨과 슬픔',
-  },
-  {
-    type: 'example',
-    title: '시드 투자 받았다가 창업자 지분 20%로 쪼그라든 후기',
-    snippet: '엔젤 → 시드 → 프리A까지 3번의 라운드를 거치면서 창업자 지분이 60% → 35% → 20%로 희석됐습니다. 매 라운드마다 이사회 구성이 바뀌면서 의사결정 속도도 현저히 느려졌어요.',
-    source: '용감한 수달 · 스타트업의 기쁨과 슬픔',
-  },
-  {
-    type: 'tip',
-    title: 'TIPS 받으려면 엔젤투자는 필수, 액셀러레이터를 찾아라',
-    snippet: '한국에서 TIPS(최대 5억)를 받으려면 엔젤투자 유치가 전제 조건입니다. 스파크랩, 프라이머, 매쉬업엔젤스 같은 초기 AC를 먼저 접촉하세요. AC 투자금은 보통 3천만~1억 수준이지만 TIPS 연계가 핵심 가치입니다.',
-    source: '현명한 부엉이 · 스타트업의 기쁨과 슬픔',
-  },
-]
-
 export function JournalingHome() {
   const { nullifierHash, logout } = useUserStore()
   const { bots, loadBots } = useBotsStore()
