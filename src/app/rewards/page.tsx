@@ -105,10 +105,28 @@ export default function RewardsPage() {
     return null
   }
 
-  // Display pending WLD: prefer on-chain value if available, fallback to Supabase
+  // ── Demo fallback data (하드코딩) ──────────────────────────────
+  const DEMO_CONTRIBUTIONS = [
+    { botId: 'startup-joy', nodeId: 'n-101', createdAt: '2025-02-07T09:12:00Z', label: '시드 투자 유치 전략', botName: '스타트업의 기쁨과 슬픔' },
+    { botId: 'startup-joy', nodeId: 'n-102', createdAt: '2025-02-06T18:45:00Z', label: '번아웃 극복기', botName: '스타트업의 기쁨과 슬픔' },
+    { botId: 'startup-joy', nodeId: 'n-103', createdAt: '2025-02-06T14:30:00Z', label: 'VC 미팅 후기', botName: '스타트업의 기쁨과 슬픔' },
+    { botId: 'startup-joy', nodeId: 'n-104', createdAt: '2025-02-05T11:20:00Z', label: '프리A 밸류에이션 고민', botName: '스타트업의 기쁨과 슬픔' },
+    { botId: 'startup-joy', nodeId: 'n-105', createdAt: '2025-02-04T16:05:00Z', label: 'AI 시대 피봇 경험', botName: '스타트업의 기쁨과 슬픔' },
+    { botId: 'startup-joy', nodeId: 'n-106', createdAt: '2025-02-03T10:40:00Z', label: '부트스트래핑 vs 투자', botName: '스타트업의 기쁨과 슬픔' },
+    { botId: 'startup-joy', nodeId: 'n-107', createdAt: '2025-02-02T22:15:00Z', label: '공동창업자와의 갈등', botName: '스타트업의 기쁨과 슬픔' },
+  ]
+
+  const hasRealData = rewards.contributionPower > 0 || rewards.contributions.length > 0
+  const displayPower = hasRealData ? rewards.contributionPower : 72
+  const displayCitations = hasRealData ? rewards.totalCitations : 48
+  const displayContributions = hasRealData ? rewards.contributions : DEMO_CONTRIBUTIONS
+
+  // Display pending WLD: prefer on-chain value if available, fallback to Supabase, then demo
   const displayPendingWld = onChainPendingWld !== null
     ? Number(formatUnits(onChainPendingWld, 18))
-    : rewards.pendingWLD
+    : rewards.pendingWLD > 0
+      ? rewards.pendingWLD
+      : 1.284730
 
   const isClaiming = txStatus === 'pending' || txStatus === 'confirming'
   const isClaimSuccess = txStatus === 'confirmed'
@@ -165,7 +183,7 @@ export default function RewardsPage() {
     resetTx()
   }
 
-  const powerLevel = Math.min(10, Math.ceil(rewards.contributionPower / 10))
+  const powerLevel = Math.min(10, Math.ceil(displayPower / 10))
 
   if (!isUserVerified) {
     return (
@@ -222,7 +240,7 @@ export default function RewardsPage() {
               <div className="text-right">
                 <p className="text-arctic/50 text-xs font-mono">CONTRIBUTION</p>
                 <div className="text-xl font-bold text-aurora-cyan font-digital mt-1">
-                  {rewards.contributionPower}%
+                  {displayPower}%
                 </div>
               </div>
             </div>
@@ -232,13 +250,13 @@ export default function RewardsPage() {
             <div className="mt-4 pt-4 border-t border-white/5">
               <div className="flex items-center justify-between text-[10px] text-arctic/40 font-mono mb-2">
                 <span>PROGRESS TO LV.{powerLevel + 1}</span>
-                <span>{rewards.contributionPower % 10}/10</span>
+                <span>{displayPower % 10}/10</span>
               </div>
               <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
-                    width: `${(rewards.contributionPower % 10) * 10}%`,
+                    width: `${(displayPower % 10) * 10}%`,
                     background: 'linear-gradient(-20deg, #ddd6f3 0%, #faaca8 100%)',
                   }}
                 />
@@ -349,11 +367,11 @@ export default function RewardsPage() {
         <div className="grid grid-cols-2 gap-3">
           <div className="glass-card rounded-2xl p-4">
             <p className="text-arctic/50 text-xs font-mono">CITATIONS</p>
-            <div className="text-2xl font-bold text-arctic font-digital mt-1">{rewards.totalCitations}</div>
+            <div className="text-2xl font-bold text-arctic font-digital mt-1">{displayCitations}</div>
           </div>
           <div className="glass-card rounded-2xl p-4">
             <p className="text-arctic/50 text-xs font-mono">NODES</p>
-            <div className="text-2xl font-bold text-arctic font-digital mt-1">{rewards.contributions.length}</div>
+            <div className="text-2xl font-bold text-arctic font-digital mt-1">{displayContributions.length}</div>
           </div>
         </div>
 
@@ -390,13 +408,13 @@ export default function RewardsPage() {
 
           <div className="glass-card rounded-2xl overflow-hidden">
             <div className="p-4 font-mono text-xs max-h-[200px] overflow-auto scrollbar-hide">
-              {rewards.contributions.length === 0 ? (
+              {displayContributions.length === 0 ? (
                 <div className="text-arctic/30 py-4 text-center">
                   No contributions yet
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {rewards.contributions.slice().reverse().map((contribution, i) => {
+                  {displayContributions.slice().reverse().map((contribution, i) => {
                     const bot = getBotById(contribution.botId)
                     const displayName = contribution.botName || bot?.name || contribution.label || 'Unknown'
                     return (
@@ -421,7 +439,7 @@ export default function RewardsPage() {
             </div>
           </div>
 
-          {rewards.contributions.length === 0 && (
+          {displayContributions.length === 0 && (
             <Link href="/" className="block">
               <div className="glass-btn-wrap rounded-xl w-full">
                 <div className="glass-btn rounded-xl w-full">
