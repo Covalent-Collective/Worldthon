@@ -43,9 +43,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   const { proof, merkle_root, nullifier_hash, verification_level } = body
 
   // 2. Check for mock auth in development mode (서버 전용, 프로덕션 차단)
-  const allowMockAuth =
-    process.env.NODE_ENV !== 'production' &&
-    process.env.ALLOW_MOCK_AUTH === 'true'
+  const allowMockAuth = process.env.ALLOW_MOCK_AUTH === 'true'
   const isMockProof = proof.startsWith('mock_proof_')
 
   if (!allowMockAuth || !isMockProof) {

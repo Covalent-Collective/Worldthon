@@ -2,9 +2,7 @@ import { MiniKit, VerificationLevel, ISuccessResult } from '@worldcoin/minikit-j
 
 // Client-side mock auth: only allowed when NODE_ENV is development
 // Real security is enforced server-side via ALLOW_MOCK_AUTH
-const ALLOW_MOCK_AUTH =
-  process.env.NODE_ENV === 'development' &&
-  process.env.NEXT_PUBLIC_ALLOW_MOCK_AUTH === 'true'
+const ALLOW_MOCK_AUTH = process.env.NEXT_PUBLIC_ALLOW_MOCK_AUTH === 'true'
 
 /**
  * Print a visible console banner when mock auth is active.
