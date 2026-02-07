@@ -63,5 +63,12 @@ export function useTransaction() {
     setError(null)
   }, [])
 
-  return { status, txHash, error, trackTransaction, reset }
+  /** Manually mark as confirmed (for demo/mock flows without real on-chain tx) */
+  const setConfirmed = useCallback((hash?: string) => {
+    setTxHash(hash ?? null)
+    setStatus('confirmed')
+    setError(null)
+  }, [])
+
+  return { status, txHash, error, trackTransaction, reset, setConfirmed }
 }
