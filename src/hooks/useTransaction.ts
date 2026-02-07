@@ -1,62 +1,67 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { createPublicClient, http } from 'viem'
+import { worldchain } from 'viem/chains'
+
+export type TransactionStatus = 'idle' | 'pending' | 'confirming' | 'confirmed' | 'failed'
 
 export interface TransactionState {
-  /** The transaction_id returned by World App (not the on-chain tx hash) */
-  transactionId: string | null
-  /** Whether we are waiting for on-chain confirmation */
-  isConfirming: boolean
-  /** Whether the transaction has been confirmed */
-  isConfirmed: boolean
-  /** The on-chain transaction hash once confirmed */
+  /** Current status of the transaction lifecycle */
+  status: TransactionStatus
+  /** The on-chain transaction hash */
   txHash: string | null
+  /** Error message if the transaction failed */
+  error: string | null
 }
 
 /**
- * React hook for tracking the lifecycle of a MiniKit transaction.
+ * React hook for tracking the lifecycle of an on-chain transaction.
  *
- * For the hackathon demo, confirmation is simulated with a short delay.
- * In production this would poll the RPC or listen for World App callbacks.
+ * Uses viem's publicClient to wait for transaction receipt confirmation
+ * on World Chain. Replaces the previous simulated/mock tracking.
  */
 export function useTransaction() {
-  const [transactionId, setTransactionId] = useState<string | null>(null)
-  const [isConfirming, setIsConfirming] = useState(false)
-  const [isConfirmed, setIsConfirmed] = useState(false)
+  const [status, setStatus] = useState<TransactionStatus>('idle')
   const [txHash, setTxHash] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const trackTransaction = useCallback(async (txId: string) => {
-    setTransactionId(txId)
-    setIsConfirming(true)
-    setIsConfirmed(false)
-    setTxHash(null)
+  const trackTransaction = useCallback(async (hash: string) => {
+    setTxHash(hash)
+    setStatus('confirming')
+    setError(null)
 
-    // Demo: simulate confirmation after a brief delay.
-    // Production: poll publicClient.getTransactionReceipt or use WS.
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-      setTxHash(txId) // In production, resolve actual hash from txId
-      setIsConfirmed(true)
-    } catch (error) {
-      console.error('[useTransaction] Tracking failed:', error)
-    } finally {
-      setIsConfirming(false)
+      const client = createPublicClient({
+        chain: worldchain,
+        transport: http(
+          process.env.NEXT_PUBLIC_WORLD_CHAIN_RPC ||
+            'https://worldchain-mainnet.g.alchemy.com/public'
+        ),
+      })
+
+      const receipt = await client.waitForTransactionReceipt({
+        hash: hash as `0x${string}`,
+        confirmations: 1,
+      })
+
+      if (receipt.status === 'success') {
+        setStatus('confirmed')
+      } else {
+        setStatus('failed')
+        setError('Transaction reverted')
+      }
+    } catch (err) {
+      setStatus('failed')
+      setError(err instanceof Error ? err.message : 'Transaction tracking failed')
     }
   }, [])
 
   const reset = useCallback(() => {
-    setTransactionId(null)
-    setIsConfirming(false)
-    setIsConfirmed(false)
+    setStatus('idle')
     setTxHash(null)
+    setError(null)
   }, [])
 
-  return {
-    transactionId,
-    isConfirming,
-    isConfirmed,
-    txHash,
-    trackTransaction,
-    reset,
-  }
+  return { status, txHash, error, trackTransaction, reset }
 }

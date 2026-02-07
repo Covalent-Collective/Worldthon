@@ -62,6 +62,24 @@
   },
   {
     "type": "function",
+    "name": "deactivateSegment",
+    "inputs": [
+      { "name": "segmentId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
+      { "name": "newOwner", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "segments",
     "inputs": [
       { "name": "", "type": "uint256", "internalType": "uint256" }
@@ -141,6 +159,15 @@
     "anonymous": false
   },
   {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      { "name": "previousOwner", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "newOwner", "type": "address", "indexed": true, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  {
     "type": "error",
     "name": "SegmentNotActive",
     "inputs": []
@@ -158,6 +185,11 @@
   {
     "type": "error",
     "name": "Unauthorized",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAddress",
     "inputs": []
   }
 ]

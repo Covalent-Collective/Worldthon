@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { getWldBalance } from '@/lib/contract'
+import { useUserStore } from '@/stores/userStore'
+import { formatUnits } from 'viem'
+import type { Address } from 'viem'
 
 interface PaymentModalProps {
   isOpen: boolean
@@ -22,8 +26,7 @@ function generateRandomHex(length: number): string {
   return result
 }
 
-// Mock constants
-const MOCK_BALANCE = 12.47
+// Mock constants for payment flow (Phase 2 will replace these)
 const MOCK_USD_RATE = 1.68 // 1 WLD = $1.68 USD
 const MOCK_GAS_FEE = 0.0001
 const MOCK_BLOCK = '#48,291,037'
@@ -47,7 +50,49 @@ export function PaymentModal({
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const confirmTimerRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Real WLD balance state
+  const [wldBalance, setWldBalance] = useState<string | null>(null)
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false)
+  const { nullifierHash } = useUserStore()
+
   const usdEquivalent = (wldAmount * MOCK_USD_RATE).toFixed(2)
+
+  // Fetch real WLD balance on mount when modal opens
+  useEffect(() => {
+    if (!isOpen) return
+
+    const maybeAddress = nullifierHash && nullifierHash.startsWith('0x') && nullifierHash.length === 42
+      ? nullifierHash as Address
+      : null
+
+    if (!maybeAddress) {
+      setWldBalance(null)
+      return
+    }
+
+    let cancelled = false
+    setIsLoadingBalance(true)
+
+    getWldBalance(maybeAddress)
+      .then((balance) => {
+        if (cancelled) return
+        if (balance !== null) {
+          setWldBalance(Number(formatUnits(balance, 18)).toFixed(2))
+        } else {
+          setWldBalance(null)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setWldBalance(null)
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingBalance(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen, nullifierHash])
 
   // Animate the fake tx hash while processing
   useEffect(() => {
@@ -122,6 +167,13 @@ export function PaymentModal({
   // A2: Progress bar width based on confirm step
   const progressWidth = confirmStep === 0 ? 0 : confirmStep === 1 ? 33 : confirmStep === 2 ? 66 : 100
 
+  // Display balance string
+  const balanceDisplay = isLoadingBalance
+    ? 'Loading...'
+    : wldBalance !== null
+      ? `${wldBalance} WLD`
+      : '\u2014'
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -159,7 +211,7 @@ export function PaymentModal({
               >
                 <div className="w-10 h-10 border-2 border-aurora-cyan/30 border-t-aurora-cyan rounded-full animate-spin" />
                 <p className="text-sm text-arctic/70">
-                  {confirmStep < 3 ? '트랜잭션 처리 중...' : '트랜잭션 처리 중...'}
+                  Processing transaction...
                 </p>
 
                 {/* Tx hash animation */}
@@ -174,10 +226,10 @@ export function PaymentModal({
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] text-arctic/50">
                       {confirmStep >= 3
-                        ? '컨펌 3/3'
+                        ? 'Confirm 3/3'
                         : confirmStep === 2
-                          ? '컨펌 2/3...'
-                          : '컨펌 1/3...'}
+                          ? 'Confirm 2/3...'
+                          : 'Confirm 1/3...'}
                     </span>
                     <span className="text-[10px] font-mono text-arctic/25">
                       {progressWidth}%
@@ -221,7 +273,7 @@ export function PaymentModal({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <p className="text-sm text-green-400 font-medium">결제 완료</p>
+                <p className="text-sm text-green-400 font-medium">Payment Complete</p>
 
                 {/* A3: Receipt */}
                 <div className="w-full mt-2 rounded-2xl bg-white/5 border border-white/10 p-4 space-y-2.5">
@@ -288,7 +340,7 @@ export function PaymentModal({
                     background: 'linear-gradient(135deg, #00F2FF 0%, #667EEA 100%)',
                   }}
                 >
-                  확인
+                  Confirm
                 </button>
               </motion.div>
             )}
@@ -296,10 +348,10 @@ export function PaymentModal({
             {/* Default Payment Content */}
             {!isProcessing && !showCheckmark && (
               <>
-                {/* A4: Wallet balance (top-right aligned, small font) */}
+                {/* Wallet balance (top-right aligned, real query) */}
                 <div className="flex justify-end mb-3">
                   <span className="text-[11px] text-arctic/40">
-                    잔액: {MOCK_BALANCE.toFixed(2)} WLD
+                    Balance: {balanceDisplay}
                   </span>
                 </div>
 
@@ -317,7 +369,7 @@ export function PaymentModal({
                 {/* Divider */}
                 <div className="border-t border-white/10 mb-4" />
 
-                {/* WLD Amount + A1: USD equivalent + gas fee */}
+                {/* WLD Amount + USD equivalent + gas fee */}
                 <div className="flex flex-col items-center gap-1 mb-1">
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-digital text-aurora-cyan">
@@ -325,15 +377,15 @@ export function PaymentModal({
                     </span>
                     <span className="text-sm font-mono text-arctic/50">WLD</span>
                   </div>
-                  {/* A1: USD conversion */}
+                  {/* USD conversion */}
                   <span className="text-[11px] text-arctic/30">
-                    ≈ ${usdEquivalent} USD
+                    ~ ${usdEquivalent} USD
                   </span>
-                  {/* A1: Gas fee */}
+                  {/* Gas fee */}
                   <span className="text-[10px] text-arctic/25">
-                    가스비: ~{MOCK_GAS_FEE} WLD
+                    Gas: ~{MOCK_GAS_FEE} WLD
                   </span>
-                  <span className="text-xs text-arctic/40 mt-0.5">지식 접근 비용</span>
+                  <span className="text-xs text-arctic/40 mt-0.5">Knowledge access fee</span>
                 </div>
 
                 {/* Buttons */}
@@ -342,7 +394,7 @@ export function PaymentModal({
                     onClick={onClose}
                     className="flex-1 glass-btn rounded-xl py-2.5 text-center text-sm font-medium text-arctic/70 hover:text-arctic transition-colors"
                   >
-                    취소
+                    Cancel
                   </button>
                   <button
                     onClick={handleConfirm}
@@ -351,13 +403,13 @@ export function PaymentModal({
                       background: 'linear-gradient(135deg, #00F2FF 0%, #667EEA 100%)',
                     }}
                   >
-                    결제하기
+                    Pay
                   </button>
                 </div>
 
                 {/* Footer */}
                 <p className="text-[10px] text-arctic/30 text-center mt-4">
-                  World ID 인증 지갑에서 차감됩니다
+                  Charged from your World ID verified wallet
                 </p>
               </>
             )}

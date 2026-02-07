@@ -15,6 +15,13 @@ pragma solidity ^0.8.24;
 ///        - Matching: two commitments in the same segment prove two users share an
 ///          interest category — without revealing either user's identity or data.
 ///
+///      ZK verification note (hackathon scope):
+///        Full ZK circuit verification (e.g. Groth16/PLONK verifier) is deferred to
+///        production. The current implementation uses a commitment-based approach that
+///        provides privacy guarantees through hash preimage resistance. A production
+///        deployment would add on-chain proof verification to ensure commitments are
+///        correctly formed without trusting the client.
+///
 ///      ZK 프라이버시 모델:
 ///        - 사용자의 실제 데이터는 절대 온체인에 저장되지 않음
 ///        - commitment만으로는 누가 어떤 세그먼트에 속하는지 알 수 없음
@@ -29,6 +36,7 @@ contract ZKSegment {
     error AlreadyCommitted();
     error CommitmentExists();
     error Unauthorized();
+    error ZeroAddress();
 
     // -----------------------------------------------------------------------
     //  Structs
@@ -74,6 +82,12 @@ contract ZKSegment {
 
     /// @notice Emitted when a membership commitment is verified.
     event MembershipVerified(uint256 indexed segmentId, bytes32 commitment);
+
+    /// @notice Emitted when a segment is deactivated.
+    event SegmentDeactivated(uint256 indexed segmentId);
+
+    /// @notice Emitted when contract ownership is transferred.
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     // -----------------------------------------------------------------------
     //  Modifiers
@@ -183,5 +197,26 @@ contract ZKSegment {
     /// @param name The human-readable name of the segment.
     function createSegment(string memory name) external onlyOwner {
         _createSegment(name);
+    }
+
+    /// @notice Deactivate a segment (owner only).
+    /// @dev Deactivated segments cannot accept new commitments but existing
+    ///      commitments remain valid for verification.
+    /// @param segmentId The segment to deactivate.
+    function deactivateSegment(uint256 segmentId) external onlyOwner {
+        if (!segments[segmentId].active) revert SegmentNotActive();
+        segments[segmentId].active = false;
+
+        emit SegmentDeactivated(segmentId);
+    }
+
+    /// @notice Transfer ownership of the contract to a new address.
+    /// @param newOwner  The address of the new owner.
+    function transferOwnership(address newOwner) external onlyOwner {
+        if (newOwner == address(0)) revert ZeroAddress();
+        address previousOwner = owner;
+        owner = newOwner;
+
+        emit OwnershipTransferred(previousOwner, newOwner);
     }
 }

@@ -28,6 +28,9 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# contracts env (contains private keys)
+contracts/.env
+
 # vercel
 .vercel
 

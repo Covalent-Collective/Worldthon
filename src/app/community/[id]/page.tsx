@@ -22,74 +22,65 @@ const item = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' as const } },
 }
 
-/** Mock weekly photo archive data */
-interface WeekDay {
-  day: string
-  imageUrl: string
+/** Mock user contribution entries — each row = one user's contribution */
+interface ContributionRow {
+  nickname: string
+  label: string
+  timeAgo: string
+  images: string[]
 }
 
-interface WeekData {
-  week: number
-  dateRange: string
-  days: WeekDay[]
-}
-
-const MOCK_WEEKS: WeekData[] = [
-  {
-    week: 1,
-    dateRange: 'Jan 6 - Jan 12',
-    days: [
-      { day: 'Mon', imageUrl: 'https://picsum.photos/seed/w1mon/200/280' },
-      { day: 'Tue', imageUrl: 'https://picsum.photos/seed/w1tue/200/280' },
-      { day: 'Wed', imageUrl: 'https://picsum.photos/seed/w1wed/200/280' },
-      { day: 'Thu', imageUrl: 'https://picsum.photos/seed/w1thu/200/280' },
-      { day: 'Fri', imageUrl: 'https://picsum.photos/seed/w1fri/200/280' },
-      { day: 'Sat', imageUrl: 'https://picsum.photos/seed/w1sat/200/280' },
-      { day: 'Sun', imageUrl: 'https://picsum.photos/seed/w1sun/200/280' },
-    ],
-  },
-  {
-    week: 2,
-    dateRange: 'Jan 13 - Jan 19',
-    days: [
-      { day: 'Mon', imageUrl: 'https://picsum.photos/seed/w2mon/200/280' },
-      { day: 'Tue', imageUrl: 'https://picsum.photos/seed/w2tue/200/280' },
-      { day: 'Wed', imageUrl: 'https://picsum.photos/seed/w2wed/200/280' },
-      { day: 'Thu', imageUrl: 'https://picsum.photos/seed/w2thu/200/280' },
-      { day: 'Fri', imageUrl: 'https://picsum.photos/seed/w2fri/200/280' },
-      { day: 'Sat', imageUrl: 'https://picsum.photos/seed/w2sat/200/280' },
-      { day: 'Sun', imageUrl: 'https://picsum.photos/seed/w2sun/200/280' },
-    ],
-  },
-  {
-    week: 3,
-    dateRange: 'Jan 20 - Jan 26',
-    days: [
-      { day: 'Mon', imageUrl: 'https://picsum.photos/seed/w3mon/200/280' },
-      { day: 'Tue', imageUrl: 'https://picsum.photos/seed/w3tue/200/280' },
-      { day: 'Wed', imageUrl: 'https://picsum.photos/seed/w3wed/200/280' },
-      { day: 'Thu', imageUrl: 'https://picsum.photos/seed/w3thu/200/280' },
-      { day: 'Fri', imageUrl: 'https://picsum.photos/seed/w3fri/200/280' },
-      { day: 'Sat', imageUrl: 'https://picsum.photos/seed/w3sat/200/280' },
-      { day: 'Sun', imageUrl: 'https://picsum.photos/seed/w3sun/200/280' },
-    ],
-  },
-  {
-    week: 4,
-    dateRange: 'Jan 27 - Feb 2',
-    days: [
-      { day: 'Mon', imageUrl: 'https://picsum.photos/seed/w4mon/200/280' },
-      { day: 'Tue', imageUrl: 'https://picsum.photos/seed/w4tue/200/280' },
-      { day: 'Wed', imageUrl: 'https://picsum.photos/seed/w4wed/200/280' },
-      { day: 'Thu', imageUrl: 'https://picsum.photos/seed/w4thu/200/280' },
-      { day: 'Fri', imageUrl: 'https://picsum.photos/seed/w4fri/200/280' },
-      { day: 'Sat', imageUrl: 'https://picsum.photos/seed/w4sat/200/280' },
-      { day: 'Sun', imageUrl: 'https://picsum.photos/seed/w4sun/200/280' },
-    ],
-  },
+const MOCK_CONTRIBUTIONS: ContributionRow[] = [
+  { nickname: '졸린 호랑이', label: 'VC 미팅 후기', timeAgo: '23분 전', images: [
+    'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=200&h=280&fit=crop',
+  ]},
+  { nickname: '배고픈 판다', label: '데모데이 발표 준비', timeAgo: '1시간 전', images: [
+    'https://images.unsplash.com/photo-1552664730-d307ca884978?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=200&h=280&fit=crop',
+  ]},
+  { nickname: '용감한 수달', label: 'IR 덱 피드백 정리', timeAgo: '3시간 전', images: [
+    'https://images.unsplash.com/photo-1573497620053-ea5300f94f21?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1507925921958-8a62f3d1a50d?w=200&h=280&fit=crop',
+  ]},
+  { nickname: '느긋한 거북이', label: '팀 회고 미팅 기록', timeAgo: '1일 전', images: [
+    'https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=200&h=280&fit=crop',
+  ]},
+  { nickname: '신나는 토끼', label: '사용자 인터뷰 요약', timeAgo: '1일 전', images: [
+    'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=200&h=280&fit=crop',
+  ]},
+  { nickname: '꼼꼼한 다람쥐', label: '경쟁사 분석 노트', timeAgo: '2일 전', images: [
+    'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1553877522-43269d4ea984?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=200&h=280&fit=crop',
+  ]},
+  { nickname: '현명한 부엉이', label: '제품 로드맵 초안', timeAgo: '3일 전', images: [
+    'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=200&h=280&fit=crop',
+  ]},
+  { nickname: '배고픈 판다', label: '투자자 Q&A 정리', timeAgo: '5일 전', images: [
+    'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1552664730-d307ca884978?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=200&h=280&fit=crop',
+  ]},
+  { nickname: '졸린 호랑이', label: '온보딩 플로우 개선', timeAgo: '6일 전', images: [
+    'https://images.unsplash.com/photo-1573497620053-ea5300f94f21?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=200&h=280&fit=crop',
+  ]},
+  { nickname: '용감한 수달', label: '공동창업자 역할 분담', timeAgo: '8일 전', images: [
+    'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=200&h=280&fit=crop',
+    'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=200&h=280&fit=crop',
+  ]},
 ]
 
-export default function CommunityDetailPage() {
+export default function RepositoryDetailPage() {
   const params = useParams()
   const id = params.id as string
 
@@ -138,7 +129,7 @@ export default function CommunityDetailPage() {
   if (!bot) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-night">
-        <p className="text-arctic/50">커뮤니티를 찾을 수 없습니다</p>
+        <p className="text-arctic/50">저장소를 찾을 수 없습니다</p>
       </div>
     )
   }
@@ -189,7 +180,7 @@ export default function CommunityDetailPage() {
           </div>
         </motion.header>
 
-        {/* 2. Community Stats Row */}
+        {/* 2. Repository Stats Row */}
         <motion.div variants={item} className="px-5 pb-4">
           <div className="grid grid-cols-3 gap-2">
             {/* Members */}
@@ -414,20 +405,23 @@ export default function CommunityDetailPage() {
           </AnimatePresence>
         </motion.div>
 
-        {/* 4. Weekly Photo Archive */}
+        {/* 4. Contribution Archive — one row per user */}
         <motion.div variants={item} className="px-5 pb-4 space-y-4">
-          {[...MOCK_WEEKS].reverse().map((week) => (
-            <div key={week.week}>
-              {/* Week Header */}
-              <div className="flex items-baseline gap-2 mb-2">
-                <span className="text-sm font-bold text-arctic">Week {week.week}</span>
-                <span className="text-[11px] text-arctic/40 font-mono">{week.dateRange}</span>
+          {MOCK_CONTRIBUTIONS.map((row, ri) => (
+            <div key={`${row.nickname}-${ri}`}>
+              {/* Nickname header */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-arctic">{row.nickname}</span>
+                  <span className="text-[11px] text-arctic/40 truncate">{row.label}</span>
+                </div>
+                <span className="text-[10px] text-arctic/30 font-mono flex-shrink-0">{row.timeAgo}</span>
               </div>
-              {/* Horizontal Scroll Cards */}
+              {/* Image cards */}
               <div className="flex gap-[3px] overflow-x-auto scrollbar-hide">
-                {week.days.map((slot, idx) => {
+                {row.images.map((url, idx) => {
                   const isFirst = idx === 0
-                  const isLast = idx === week.days.length - 1
+                  const isLast = idx === row.images.length - 1
                   const roundedClass = isFirst
                     ? 'rounded-l-2xl'
                     : isLast
@@ -436,12 +430,12 @@ export default function CommunityDetailPage() {
 
                   return (
                     <div
-                      key={slot.day}
+                      key={idx}
                       className={`relative flex-shrink-0 w-[72px] aspect-[5/7] overflow-hidden ${roundedClass}`}
                     >
                       <img
-                        src={slot.imageUrl}
-                        alt={slot.day}
+                        src={url}
+                        alt={row.label}
                         className="w-full h-full object-cover"
                       />
                     </div>

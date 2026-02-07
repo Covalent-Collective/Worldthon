@@ -20,7 +20,7 @@ const item = {
   show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' as const } },
 }
 
-export default function CommunityPage() {
+export default function RepositoryPage() {
   const { bots, loadBots, isLoaded } = useBotsStore()
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export default function CommunityPage() {
     <AuroraBackground className="min-h-screen pb-20">
       {/* Header */}
       <header className="px-5 pt-6 pb-4">
-        <h1 className="text-2xl font-bold text-arctic tracking-tight">Community</h1>
+        <h1 className="text-2xl font-bold text-arctic tracking-tight">Repository</h1>
         <p className="text-arctic/50 text-sm mt-1 font-mono">COLLECTIVE INTELLIGENCE</p>
       </header>
 

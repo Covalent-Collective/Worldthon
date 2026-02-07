@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getServiceSupabase, getSupabase } from '@/lib/supabase'
+import { SEED_VAULT_ADDRESS } from '@/lib/contract'
 
 export async function POST(request: Request): Promise<NextResponse> {
   // 1. Extract user identity from middleware-injected headers
@@ -21,7 +22,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     )
   }
 
-  // 3. Initialize Supabase client (서비스 키 우선, fallback으로 anon 키)
+  // 3. Initialize Supabase client
   const supabase = getServiceSupabase() ?? getSupabase()
 
   if (!supabase) {
@@ -52,21 +53,16 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ amount: 0 })
     }
 
-    // 5. Reset pending_wld to 0
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({ pending_wld: 0 })
-      .eq('id', userId)
-
-    if (updateError) {
-      console.error('Failed to reset pending_wld:', updateError)
-      return NextResponse.json(
-        { error: 'Failed to process claim' },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json({ amount })
+    // 5. Return the claimable amount and contract address so the client can
+    //    send the on-chain claim transaction via MiniKit.sendTransaction.
+    //    The client must then call POST /api/claim/confirm with the txHash
+    //    to finalize the claim (reset pending_wld in Supabase).
+    return NextResponse.json({
+      amount,
+      contractAddress: SEED_VAULT_ADDRESS,
+      action: 'claimReward',
+      message: 'Send the claimReward transaction via MiniKit, then POST /api/claim/confirm with the txHash.',
+    })
   } catch (err) {
     console.error('Claim error:', err)
     return NextResponse.json(

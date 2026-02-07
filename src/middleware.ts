@@ -90,6 +90,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-user-id', payload.userId)
   requestHeaders.set('x-verification-level', payload.verificationLevel)
+  requestHeaders.set('x-nullifier-hash', payload.nullifierHash)
 
   return NextResponse.next({
     request: {

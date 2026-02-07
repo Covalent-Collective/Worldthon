@@ -18,6 +18,8 @@ export interface Database {
           contribution_power: number
           total_citations: number
           pending_wld: number
+          wallet_address: string | null
+          wallet_linked_at: string | null
         }
         Insert: {
           id?: string
@@ -27,6 +29,8 @@ export interface Database {
           contribution_power?: number
           total_citations?: number
           pending_wld?: number
+          wallet_address?: string | null
+          wallet_linked_at?: string | null
         }
         Update: {
           id?: string
@@ -36,6 +40,8 @@ export interface Database {
           contribution_power?: number
           total_citations?: number
           pending_wld?: number
+          wallet_address?: string | null
+          wallet_linked_at?: string | null
         }
         Relationships: []
       }
@@ -253,6 +259,7 @@ export interface Database {
           created_at: string
           status: 'pending' | 'approved' | 'rejected'
           reviewed_at: string | null
+          tx_hash: string | null
         }
         Insert: {
           id?: string
@@ -262,6 +269,7 @@ export interface Database {
           created_at?: string
           status?: 'pending' | 'approved' | 'rejected'
           reviewed_at?: string | null
+          tx_hash?: string | null
         }
         Update: {
           id?: string
@@ -271,6 +279,7 @@ export interface Database {
           created_at?: string
           status?: 'pending' | 'approved' | 'rejected'
           reviewed_at?: string | null
+          tx_hash?: string | null
         }
         Relationships: [
           {

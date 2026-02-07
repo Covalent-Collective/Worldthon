@@ -2,7 +2,7 @@ import { keccak256, encodePacked, toHex, type Hex } from 'viem'
 import { createPublicClient, http } from 'viem'
 import { worldchain } from 'viem/chains'
 import { MiniKit } from '@worldcoin/minikit-js'
-import ZKSegmentABI from '@/abi/ZKSegment.json'
+import { ZK_SEGMENT_ABI } from '@/lib/abi/ZKSegment'
 
 // ---------------------------------------------------------------------------
 //  ZK 프라이버시 핵심 (ZK Privacy Core):
@@ -219,7 +219,7 @@ export async function commitToSegment(
       transaction: [
         {
           address: ZK_SEGMENT_ADDRESS,
-          abi: ZKSegmentABI,
+          abi: ZK_SEGMENT_ABI,
           functionName: 'commitMembership',
           args: [BigInt(segmentId), commitment, nullifierKey],
         },
@@ -260,7 +260,7 @@ export async function verifySegmentMembership(commitment: Hex): Promise<boolean>
   try {
     const result = await publicClient.readContract({
       address: ZK_SEGMENT_ADDRESS,
-      abi: ZKSegmentABI,
+      abi: ZK_SEGMENT_ABI,
       functionName: 'verifyMembership',
       args: [commitment],
     })
@@ -288,7 +288,7 @@ export async function checkSegmentMatch(
   try {
     const result = await publicClient.readContract({
       address: ZK_SEGMENT_ADDRESS,
-      abi: ZKSegmentABI,
+      abi: ZK_SEGMENT_ABI,
       functionName: 'verifySegmentMatch',
       args: [commitmentA, commitmentB],
     })

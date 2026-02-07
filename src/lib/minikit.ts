@@ -1,14 +1,50 @@
 import { MiniKit, VerificationLevel, ISuccessResult } from '@worldcoin/minikit-js'
 
-// 클라이언트 측 mock auth: NODE_ENV가 development일 때만 허용
-// 실제 보안은 서버 측(ALLOW_MOCK_AUTH)에서 강제됨
+// Client-side mock auth: only allowed when NODE_ENV is development
+// Real security is enforced server-side via ALLOW_MOCK_AUTH
 const ALLOW_MOCK_AUTH =
   process.env.NODE_ENV === 'development' &&
   process.env.NEXT_PUBLIC_ALLOW_MOCK_AUTH === 'true'
 
-export const initMiniKit = () => {
+/**
+ * Print a visible console banner when mock auth is active.
+ * Called once on module load so developers immediately know the mode.
+ */
+function printMockAuthBanner(): void {
+  if (typeof window === 'undefined') return
+  if (!ALLOW_MOCK_AUTH) return
+
+  const bannerStyle = 'background: #ff6b00; color: #fff; font-size: 14px; padding: 8px 16px; border-radius: 4px;'
+  const detailStyle = 'color: #ff6b00; font-size: 12px;'
+
+  console.log('%c MOCK AUTH MODE ACTIVE ', bannerStyle)
+  console.log(
+    '%c MiniKit calls will return mock data.\n' +
+    ' Verify flow: mock proof accepted by server.\n' +
+    ' Wallet auth: returns mock address 0x0...0001.\n' +
+    ' Set NEXT_PUBLIC_ALLOW_MOCK_AUTH=false to disable.',
+    detailStyle
+  )
+  console.log(
+    '%c WARNING: This must NEVER be enabled in production.',
+    'color: red; font-weight: bold; font-size: 12px;'
+  )
+}
+
+// Fire the banner on module load (client-side only)
+printMockAuthBanner()
+
+export const initMiniKit = (): void => {
   if (typeof window !== 'undefined') {
     MiniKit.install()
+
+    if (MiniKit.isInstalled()) {
+      console.log('[MiniKit] Installed successfully - running inside World App')
+    } else if (ALLOW_MOCK_AUTH) {
+      console.log('[MiniKit] Not detected - mock auth will be used for development')
+    } else {
+      console.warn('[MiniKit] Not detected and mock auth is disabled')
+    }
   }
 }
 
@@ -102,6 +138,104 @@ export const verifyWithServer = async (action: string): Promise<ServerVerifyResu
     }
   } catch (error) {
     console.error('[AUTH] Server verification error:', error)
+    return null
+  }
+}
+
+/**
+ * Links the user's World App wallet via SIWE (wallet_auth).
+ * Should be called AFTER verify to associate a wallet address with the user.
+ *
+ * @param token - JWT token from verifyWithServer for authenticated requests
+ * @returns The wallet address on success, or null on failure
+ */
+export const linkWallet = async (token: string): Promise<string | null> => {
+  if (!MiniKit.isInstalled()) {
+    if (ALLOW_MOCK_AUTH) {
+      console.warn(
+        '[MOCK AUTH] MiniKit not installed - returning mock wallet_auth. ' +
+        'This is a DEVELOPMENT-ONLY bypass. Do NOT enable in production.'
+      )
+      const mockWallet = '0x0000000000000000000000000000000000000001'
+      console.log(`[MOCK AUTH] Mock wallet address: ${mockWallet}`)
+
+      // Still call the server endpoints so the full flow is exercised
+      try {
+        const nonceRes = await fetch('/api/nonce')
+        if (nonceRes.ok) {
+          const { nonce } = await nonceRes.json()
+          console.log(`[MOCK AUTH] Got nonce from server: ${nonce}`)
+
+          const siweRes = await fetch('/api/complete-siwe', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              payload: {
+                status: 'success',
+                address: mockWallet,
+                message: `Mock SIWE message with nonce: ${nonce}`,
+                signature: 'mock_signature_' + Date.now(),
+              },
+              nonce,
+            }),
+          })
+
+          if (siweRes.ok) {
+            const data = await siweRes.json()
+            console.log('[MOCK AUTH] Server accepted mock wallet auth:', data)
+            return data.walletAddress || mockWallet
+          }
+          console.warn('[MOCK AUTH] Server rejected mock SIWE - returning mock address directly')
+        }
+      } catch (err) {
+        console.warn('[MOCK AUTH] Could not reach server endpoints:', err)
+      }
+
+      return mockWallet
+    }
+    return null
+  }
+
+  try {
+    // 1. Get nonce from backend
+    const nonceRes = await fetch('/api/nonce')
+    const { nonce } = await nonceRes.json()
+
+    // 2. Execute wallet_auth via MiniKit
+    const { finalPayload } = await MiniKit.commandsAsync.walletAuth({
+      nonce,
+      requestId: '0',
+      expirationTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      statement: 'Link your wallet to NOAH for on-chain rewards',
+    })
+
+    if (finalPayload.status === 'error') {
+      console.error('[WALLET] walletAuth failed:', finalPayload)
+      return null
+    }
+
+    // 3. Send to backend for verification + storage
+    const response = await fetch('/api/complete-siwe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ payload: finalPayload, nonce }),
+    })
+
+    if (!response.ok) {
+      console.error('[WALLET] Backend SIWE verification failed:', response.status)
+      return null
+    }
+
+    const data = await response.json()
+    return data.walletAddress || null
+  } catch (error) {
+    console.error('[WALLET] linkWallet error:', error)
     return null
   }
 }

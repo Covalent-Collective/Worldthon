@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server'
 import { getServiceSupabase, getSupabase } from '@/lib/supabase'
+import { isRelayerConfigured, relayRecordContribution, hashContent } from '@/lib/relayer'
+import type { Address } from 'viem'
+
+const ZERO_ADDRESS: Address = '0x0000000000000000000000000000000000000000'
 
 interface ContributeRequestBody {
   botId: string
   label: string
   content: string
+  /** Optional World ID proof fields for on-chain verification */
+  merkleRoot?: string
+  proof?: string[]
 }
 
 function isValidBody(body: unknown): body is ContributeRequestBody {
@@ -120,7 +127,61 @@ export async function POST(request: Request): Promise<NextResponse> {
         .eq('id', userId)
     }
 
-    return NextResponse.json({ nodeId: node.id })
+    // 8. Relay to smart contract (graceful degradation: failure is non-fatal)
+    let txHash: string | null = null
+
+    if (isRelayerConfigured()) {
+      try {
+        const contentHash = hashContent(content)
+        const nullifierHash = request.headers.get('x-nullifier-hash') || ''
+
+        // Convert string botId to a numeric value for the contract
+        const botIdNumeric = /^\d+$/.test(botId)
+          ? Number(botId)
+          : parseInt(
+              Array.from(new TextEncoder().encode(botId))
+                .map((b) => b.toString(16).padStart(2, '0'))
+                .join('')
+                .slice(0, 8),
+              16
+            )
+
+        // Use proof data from request body if provided, otherwise use placeholders.
+        // Real World ID verification was already done server-side via /api/auth/verify.
+        // The on-chain contract may have proof verification disabled for relayer pattern.
+        const proofBigInts: bigint[] = body.proof?.length === 8
+          ? body.proof.map((p: string) => BigInt(p))
+          : Array(8).fill(BigInt(0))
+
+        const hash = await relayRecordContribution({
+          contentHash,
+          botId: botIdNumeric,
+          signal: ZERO_ADDRESS,
+          root: body.merkleRoot ? BigInt(body.merkleRoot) : BigInt(0),
+          nullifierHash: nullifierHash ? BigInt(nullifierHash) : BigInt(0),
+          proof: proofBigInts,
+        })
+
+        txHash = hash
+
+        // Store tx_hash on the contribution record if available
+        if (txHash) {
+          await supabase
+            .from('contributions')
+            .update({ tx_hash: txHash })
+            .eq('node_id', node.id)
+            .eq('user_id', userId)
+        }
+      } catch (relayError) {
+        // Non-fatal: log and continue. The Supabase record is the source of truth.
+        console.error('[CONTRIBUTE] Relayer submission failed (non-fatal):', relayError)
+      }
+    }
+
+    return NextResponse.json({
+      nodeId: node.id,
+      ...(txHash ? { txHash } : {}),
+    })
   } catch (err) {
     console.error('Contribution error:', err)
     return NextResponse.json(
