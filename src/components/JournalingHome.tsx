@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useUserStore } from '@/stores/userStore'
+import { useAuthStore } from '@/stores/authStore'
 import { useBotsStore } from '@/stores/botsStore'
 import { VoiceOrb } from '@/components/VoiceOrb'
 
@@ -25,7 +26,8 @@ interface RecommendedRepository {
 const MOCK_TRANSCRIPT = '매출도 안 나는데 자비를 태워가며 푼돈 벌고, 그 돈으로 클로드 결제하고 멤버들 월급까지 주고 있는 상황이라 고민이 많네. 지금 시점에서 프리 A 투자를 받아야 할지, 받는다면 적정 밸류는 얼마가 좋을지, 혹은 투자를 받음으로써 내가 너무 묶이게 되는 건 아닌지 걱정돼. 특히나 지금 같은 AI 시대에 정말 투자를 받는 게 맞는 방향인지도 의문이고. 다른 사람들은 도대체 어떻게 생각하고 있을까?'
 
 export function JournalingHome() {
-  const { nullifierHash, logout } = useUserStore()
+  const { nullifierHash } = useUserStore()
+  const logout = useAuthStore((s) => s.logout)
   const { bots, loadBots } = useBotsStore()
   const [recordingState, setRecordingState] = useState<RecordingState>('idle')
   const [recordingTime, setRecordingTime] = useState(0)

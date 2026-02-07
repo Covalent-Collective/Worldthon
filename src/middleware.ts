@@ -69,6 +69,15 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
   const payload = await verifyToken(token)
 
+  // Allow demo tokens through for hackathon
+  if (!payload && token.startsWith('demo_token_')) {
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-user-id', 'demo_user')
+    requestHeaders.set('x-verification-level', 'orb')
+    requestHeaders.set('x-nullifier-hash', 'demo_nullifier')
+    return NextResponse.next({ request: { headers: requestHeaders } })
+  }
+
   if (!payload) {
     return NextResponse.json(
       { error: 'Unauthorized' },
