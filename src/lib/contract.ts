@@ -1,7 +1,7 @@
 import { createPublicClient, http, type Address } from 'viem'
 import { worldchain } from 'viem/chains'
 import { MiniKit } from '@worldcoin/minikit-js'
-import SeedVaultABI from '@/abi/SeedVault.json'
+import { SEED_VAULT_ABI } from '@/lib/abi/SeedVault'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -14,6 +14,17 @@ export const SEED_VAULT_ADDRESS: Address =
 
 export const WLD_TOKEN_ADDRESS: Address =
   (process.env.NEXT_PUBLIC_WLD_TOKEN_ADDRESS as Address) || ZERO_ADDRESS
+
+/** Minimal ERC-20 ABI for balanceOf reads */
+const ERC20_BALANCE_ABI = [
+  {
+    type: 'function',
+    name: 'balanceOf',
+    inputs: [{ name: 'account', type: 'address', internalType: 'address' }],
+    outputs: [{ name: '', type: 'uint256', internalType: 'uint256' }],
+    stateMutability: 'view',
+  },
+] as const
 
 // ---------------------------------------------------------------------------
 // Public Client (read-only, no wallet needed)
@@ -37,23 +48,36 @@ export function isContractConfigured(): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// World ID proof parameter type
+// ---------------------------------------------------------------------------
+
+export interface WorldIdProof {
+  signal: string
+  root: bigint
+  nullifierHash: bigint
+  proof: bigint[]
+}
+
+// ---------------------------------------------------------------------------
 // Write Functions (fire-and-forget via MiniKit sendTransaction)
 // ---------------------------------------------------------------------------
 
 /**
  * Record a knowledge contribution on-chain alongside the existing DB write.
  *
- * The existing ABI expects:
+ * The ABI expects:
  *   recordContribution(bytes32 contentHash, uint256 botId, address signal,
  *                      uint256 root, uint256 nullifierHash, uint256[8] proof)
  *
  * @param contentHash - keccak256 hash of the contributed content (bytes32)
  * @param botId       - numeric identifier of the bot (converted from string)
+ * @param worldIdProof - real World ID proof parameters from verification
  * @returns The transaction_id returned by World App, or null when skipped
  */
 export async function recordContributionOnChain(
   contentHash: `0x${string}`,
-  botId: string
+  botId: string,
+  worldIdProof: WorldIdProof
 ): Promise<{ transactionId: string } | null> {
   if (!MiniKit.isInstalled() || !isContractConfigured()) return null
 
@@ -69,28 +93,19 @@ export async function recordContributionOnChain(
             .slice(0, 16) // truncate to fit safely
     )
 
-    // Hackathon demo: World ID proof params use placeholder values.
-    // Real verification is handled server-side via /api/auth/verify.
-    // The on-chain contract will be deployed with proof verification
-    // disabled or with a trusted relayer pattern for the demo.
-    const PLACEHOLDER_SIGNAL: Address = ZERO_ADDRESS
-    const PLACEHOLDER_ROOT = BigInt(0)
-    const PLACEHOLDER_NULLIFIER = BigInt(0)
-    const PLACEHOLDER_PROOF: bigint[] = Array(8).fill(BigInt(0))
-
     const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
       transaction: [
         {
           address: SEED_VAULT_ADDRESS,
-          abi: SeedVaultABI,
+          abi: SEED_VAULT_ABI,
           functionName: 'recordContribution',
           args: [
             contentHash,
             botIdNumeric,
-            PLACEHOLDER_SIGNAL,
-            PLACEHOLDER_ROOT,
-            PLACEHOLDER_NULLIFIER,
-            PLACEHOLDER_PROOF,
+            worldIdProof.signal,
+            worldIdProof.root,
+            worldIdProof.nullifierHash,
+            worldIdProof.proof,
           ],
         },
       ],
@@ -113,22 +128,24 @@ export async function recordContributionOnChain(
  * Record citation references on-chain in a single batch transaction.
  *
  * @param contentHashes - array of keccak256 content hashes being cited
+ * @param citingHashes  - array of hashes identifying the citing content
  * @returns The transaction_id or null when skipped
  */
 export async function recordCitationsOnChain(
-  contentHashes: `0x${string}`[]
+  contentHashes: `0x${string}`[],
+  citingHashes: `0x${string}`[]
 ): Promise<{ transactionId: string } | null> {
   if (!MiniKit.isInstalled() || !isContractConfigured()) return null
-  if (contentHashes.length === 0) return null
+  if (contentHashes.length === 0 || contentHashes.length !== citingHashes.length) return null
 
   try {
     const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
       transaction: [
         {
           address: SEED_VAULT_ADDRESS,
-          abi: SeedVaultABI,
+          abi: SEED_VAULT_ABI,
           functionName: 'recordCitations',
-          args: [contentHashes],
+          args: [contentHashes, citingHashes],
         },
       ],
     })
@@ -148,35 +165,41 @@ export async function recordCitationsOnChain(
 
 /**
  * Claim accumulated WLD rewards from the on-chain contract.
+ * This is the user-signed path via MiniKit sendTransaction.
  *
- * @returns The transaction_id or null when skipped
+ * @returns The transaction_id
+ * @throws Error when MiniKit is not available or the transaction fails
  */
-export async function claimRewardOnChain(): Promise<{ transactionId: string } | null> {
-  if (!MiniKit.isInstalled() || !isContractConfigured()) return null
-
-  try {
-    const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
-      transaction: [
-        {
-          address: SEED_VAULT_ADDRESS,
-          abi: SeedVaultABI,
-          functionName: 'claimReward',
-          args: [],
-        },
-      ],
-    })
-
-    if (finalPayload.status === 'success') {
-      console.log('[CONTRACT] Reward claimed on-chain:', finalPayload.transaction_id)
-      return { transactionId: finalPayload.transaction_id }
-    }
-
-    console.warn('[CONTRACT] claimReward returned error:', finalPayload)
-    return null
-  } catch (error) {
-    console.error('[CONTRACT] claimRewardOnChain failed:', error)
-    return null
+export async function claimRewardOnChain(): Promise<{ transactionId: string }> {
+  if (!MiniKit.isInstalled()) {
+    throw new Error('World App is required to claim rewards. Please open this app in World App.')
   }
+
+  if (!isContractConfigured()) {
+    throw new Error('Smart contract is not configured.')
+  }
+
+  const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+    transaction: [
+      {
+        address: SEED_VAULT_ADDRESS,
+        abi: SEED_VAULT_ABI,
+        functionName: 'claimReward',
+        args: [],
+      },
+    ],
+  })
+
+  if (finalPayload.status === 'success') {
+    console.log('[CONTRACT] Reward claimed on-chain:', finalPayload.transaction_id)
+    return { transactionId: finalPayload.transaction_id }
+  }
+
+  throw new Error(
+    `Claim transaction failed: ${
+      'error_code' in finalPayload ? finalPayload.error_code : 'unknown error'
+    }`
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -200,7 +223,7 @@ export async function getContractStats(): Promise<ContractStats> {
   try {
     const result = await publicClient.readContract({
       address: SEED_VAULT_ADDRESS,
-      abi: SeedVaultABI,
+      abi: SEED_VAULT_ABI,
       functionName: 'getStats',
     }) as [bigint, bigint]
 
@@ -210,6 +233,36 @@ export async function getContractStats(): Promise<ContractStats> {
     }
   } catch (error) {
     console.error('[CONTRACT] getContractStats failed:', error)
+    return { totalContributions: BigInt(0), totalCitations: BigInt(0) }
+  }
+}
+
+/**
+ * Read on-chain totalContributions and totalCitations individually.
+ * Alternative to getStats() when the contract doesn't have a combined getter.
+ */
+export async function getContractStatsOnChain(): Promise<ContractStats> {
+  if (!isContractConfigured()) {
+    return { totalContributions: BigInt(0), totalCitations: BigInt(0) }
+  }
+
+  try {
+    const [totalContributions, totalCitations] = await Promise.all([
+      publicClient.readContract({
+        address: SEED_VAULT_ADDRESS,
+        abi: SEED_VAULT_ABI,
+        functionName: 'totalContributions',
+      }) as Promise<bigint>,
+      publicClient.readContract({
+        address: SEED_VAULT_ADDRESS,
+        abi: SEED_VAULT_ABI,
+        functionName: 'totalCitations',
+      }) as Promise<bigint>,
+    ])
+
+    return { totalContributions, totalCitations }
+  } catch (error) {
+    console.error('[CONTRACT] getContractStatsOnChain failed:', error)
     return { totalContributions: BigInt(0), totalCitations: BigInt(0) }
   }
 }
@@ -225,13 +278,128 @@ export async function getPendingRewardOnChain(address: Address): Promise<bigint>
   try {
     const result = await publicClient.readContract({
       address: SEED_VAULT_ADDRESS,
-      abi: SeedVaultABI,
+      abi: SEED_VAULT_ABI,
       functionName: 'pendingRewards',
       args: [address],
     })
     return result as bigint
   } catch (error) {
     console.error('[CONTRACT] getPendingRewardOnChain failed:', error)
+    return BigInt(0)
+  }
+}
+
+/**
+ * Read the pending reward balance using the getPendingReward view function.
+ * Returns null on failure (rather than 0) so callers can distinguish
+ * "no rewards" from "query failed".
+ *
+ * @param address - the wallet address to query
+ */
+export async function getPendingRewardsOnChain(address: Address): Promise<bigint | null> {
+  if (!isContractConfigured()) return null
+
+  try {
+    const result = await publicClient.readContract({
+      address: SEED_VAULT_ADDRESS,
+      abi: SEED_VAULT_ABI,
+      functionName: 'getPendingReward',
+      args: [address],
+    })
+    return result as bigint
+  } catch (error) {
+    console.error('[CONTRACT] getPendingRewardsOnChain failed:', error)
+    return null
+  }
+}
+
+/**
+ * Read the WLD ERC-20 token balance for a given address.
+ *
+ * @param address - the wallet address to query
+ * @returns The token balance in wei, or null on failure
+ */
+export async function getWldBalance(address: Address): Promise<bigint | null> {
+  if (WLD_TOKEN_ADDRESS === ZERO_ADDRESS) return null
+
+  try {
+    const result = await publicClient.readContract({
+      address: WLD_TOKEN_ADDRESS,
+      abi: ERC20_BALANCE_ABI,
+      functionName: 'balanceOf',
+      args: [address],
+    })
+    return result
+  } catch (error) {
+    console.error('[CONTRACT] getWldBalance failed:', error)
+    return null
+  }
+}
+
+/**
+ * Read the reward balance for a user via the getPendingReward view function.
+ *
+ * Convenience alias that returns 0 (not null) when the contract is not
+ * configured, making it safe to use directly in UI display logic.
+ *
+ * @param address - the wallet address to query
+ * @returns The pending reward amount in WLD (18 decimals), or 0 on failure.
+ */
+export async function getRewardBalance(address: Address): Promise<bigint> {
+  if (!isContractConfigured()) return BigInt(0)
+
+  try {
+    const result = await publicClient.readContract({
+      address: SEED_VAULT_ADDRESS,
+      abi: SEED_VAULT_ABI,
+      functionName: 'getPendingReward',
+      args: [address],
+    })
+    return result as bigint
+  } catch (error) {
+    console.error('[CONTRACT] getRewardBalance failed:', error)
+    return BigInt(0)
+  }
+}
+
+/**
+ * Read the total number of contributions recorded on-chain.
+ *
+ * @returns The total contribution count, or 0 when not configured / on error.
+ */
+export async function getContributionCount(): Promise<bigint> {
+  if (!isContractConfigured()) return BigInt(0)
+
+  try {
+    const result = await publicClient.readContract({
+      address: SEED_VAULT_ADDRESS,
+      abi: SEED_VAULT_ABI,
+      functionName: 'totalContributions',
+    })
+    return result as bigint
+  } catch (error) {
+    console.error('[CONTRACT] getContributionCount failed:', error)
+    return BigInt(0)
+  }
+}
+
+/**
+ * Read the WLD balance held by the SeedVault contract (the reward pool).
+ *
+ * @returns The reward pool balance in WLD (18 decimals), or 0 on failure.
+ */
+export async function getRewardPoolBalance(): Promise<bigint> {
+  if (!isContractConfigured()) return BigInt(0)
+
+  try {
+    const result = await publicClient.readContract({
+      address: SEED_VAULT_ADDRESS,
+      abi: SEED_VAULT_ABI,
+      functionName: 'getRewardPoolBalance',
+    })
+    return result as bigint
+  } catch (error) {
+    console.error('[CONTRACT] getRewardPoolBalance failed:', error)
     return BigInt(0)
   }
 }

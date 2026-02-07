@@ -3,12 +3,22 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUserStore } from '@/stores/userStore'
+import { useAuthStore } from '@/stores/authStore'
 import { useBotsStore } from '@/stores/botsStore'
 import { BottomNav } from '@/components/BottomNav'
 import { AuroraBackground } from '@/components/AuroraBackground'
-import { getContractStats, claimRewardOnChain, isContractConfigured } from '@/lib/contract'
+import {
+  getContractStats,
+  claimRewardOnChain,
+  isContractConfigured,
+  getPendingRewardsOnChain,
+} from '@/lib/contract'
+import { useTransaction } from '@/hooks/useTransaction'
 import type { ContractStats } from '@/lib/contract'
+import type { Address } from 'viem'
+import { formatUnits } from 'viem'
 
+const WORLDSCAN_TX_URL = 'https://worldscan.org/tx/'
 
 // Power level visualization
 function PowerMeter({ level, maxLevel = 10 }: { level: number; maxLevel?: number }) {
@@ -32,17 +42,21 @@ function PowerMeter({ level, maxLevel = 10 }: { level: number; maxLevel?: number
 }
 
 export default function RewardsPage() {
-  const { isVerified, userId, rewards, claimRewards, loadUserData } = useUserStore()
+  const { isAuthenticated } = useAuthStore()
+  const { isVerified, userId, nullifierHash, rewards, claimRewards, loadUserData } = useUserStore()
+  const isUserVerified = isAuthenticated || isVerified
   const { getBotById, loadBots } = useBotsStore()
   const [mounted, setMounted] = useState(false)
-  const [showClaimSuccess, setShowClaimSuccess] = useState(false)
   const [onChainStats, setOnChainStats] = useState<ContractStats | null>(null)
+  const [onChainPendingWld, setOnChainPendingWld] = useState<bigint | null>(null)
+  const [claimError, setClaimError] = useState<string | null>(null)
+
+  const { status: txStatus, txHash, error: txError, trackTransaction, reset: resetTx } = useTransaction()
 
   useEffect(() => {
     setMounted(true)
     loadBots()
 
-    // 컨트랙트가 설정된 경우 온체인 통계 로드
     if (isContractConfigured()) {
       getContractStats()
         .then((stats) => {
@@ -51,43 +65,92 @@ export default function RewardsPage() {
           }
         })
         .catch(() => {
-          // 온체인 통계 로드 실패는 무시
+          // On-chain stats load failure is non-critical
         })
     }
   }, [loadBots])
 
-  // 인증된 사용자의 보상 데이터를 Supabase에서 로드
+  // Load reward data from Supabase for verified users
   useEffect(() => {
-    if (isVerified && userId) {
+    if (isUserVerified && userId) {
       loadUserData()
     }
-  }, [isVerified, userId, loadUserData])
+  }, [isUserVerified, userId, loadUserData])
+
+  // Attempt to read on-chain pending rewards if user has a nullifier hash
+  // (used as an approximation of address for display; the contract uses msg.sender)
+  useEffect(() => {
+    if (!isUserVerified || !nullifierHash || !isContractConfigured()) return
+
+    // The nullifierHash is not a wallet address, but if the user has a known
+    // wallet address stored, we can query on-chain. For now, attempt the read
+    // with the nullifier as an address-like identifier if it looks like one.
+    const maybeAddress = nullifierHash.startsWith('0x') && nullifierHash.length === 42
+      ? nullifierHash as Address
+      : null
+
+    if (maybeAddress) {
+      getPendingRewardsOnChain(maybeAddress)
+        .then((balance) => {
+          setOnChainPendingWld(balance)
+        })
+        .catch(() => {
+          // Fallback to Supabase value
+        })
+    }
+  }, [isVerified, nullifierHash])
 
   if (!mounted) {
     return null
   }
 
-  const handleClaim = async () => {
-    try {
-      await claimRewards()
+  // Display pending WLD: prefer on-chain value if available, fallback to Supabase
+  const displayPendingWld = onChainPendingWld !== null
+    ? Number(formatUnits(onChainPendingWld, 18))
+    : rewards.pendingWLD
 
-      // 온체인 보상 청구 (fire-and-forget, DB 청구와 병행)
-      if (isContractConfigured()) {
-        claimRewardOnChain().catch(() => {
-          // 온체인 청구 실패는 무시 - DB 청구가 우선
-        })
+  const isClaiming = txStatus === 'pending' || txStatus === 'confirming'
+  const isClaimSuccess = txStatus === 'confirmed'
+  const isClaimFailed = txStatus === 'failed'
+
+  const handleClaim = async () => {
+    setClaimError(null)
+    resetTx()
+
+    try {
+      // Step 1: Attempt on-chain claim via MiniKit (user signs)
+      const result = await claimRewardOnChain()
+
+      // Step 2: Track the transaction confirmation
+      await trackTransaction(result.transactionId)
+
+      // Step 3: Confirm the claim on the backend (reset DB pending_wld)
+      try {
+        await claimRewards()
+      } catch {
+        // DB claim may fail if already claimed; non-critical since on-chain succeeded
+        console.warn('[REWARDS] Backend claim confirmation failed, on-chain claim succeeded')
       }
 
-      setShowClaimSuccess(true)
-      setTimeout(() => setShowClaimSuccess(false), 3000)
+      // Refresh user data after successful claim
+      if (userId) {
+        loadUserData()
+      }
     } catch (error) {
-      console.error('Failed to claim rewards:', error)
+      const message = error instanceof Error ? error.message : 'Failed to claim rewards'
+      setClaimError(message)
+      console.error('[REWARDS] Claim failed:', error)
     }
+  }
+
+  const handleRetry = () => {
+    setClaimError(null)
+    resetTx()
   }
 
   const powerLevel = Math.min(10, Math.ceil(rewards.contributionPower / 10))
 
-  if (!isVerified) {
+  if (!isUserVerified) {
     return (
       <AuroraBackground className="min-h-screen pb-20">
         <header className="px-5 pt-6 pb-4">
@@ -189,21 +252,79 @@ export default function RewardsPage() {
 
             <div className="flex items-baseline gap-2">
               <span className="text-4xl font-bold text-arctic font-digital tabular-nums">
-                {rewards.pendingWLD.toFixed(6)}
+                {displayPendingWld.toFixed(6)}
               </span>
               <span className="text-sm text-arctic/50 font-mono">WLD</span>
             </div>
 
-            <button onClick={handleClaim} className="w-full mt-4">
-              <div className="glass-btn-wrap rounded-xl w-full">
-                <div className="glass-btn rounded-xl w-full">
-                  <span className="glass-btn-text block py-3 text-center text-sm font-bold">
-                    {showClaimSuccess ? 'CLAIMED' : 'CLAIM REWARD'}
-                  </span>
+            {/* Claim Button / Status */}
+            {isClaiming ? (
+              <div className="w-full mt-4">
+                <div className="glass-card rounded-xl w-full py-3 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-aurora-cyan/30 border-t-aurora-cyan rounded-full animate-spin" />
+                    <span className="text-sm text-arctic/70 font-mono">
+                      {txStatus === 'pending' ? 'SIGNING...' : 'CONFIRMING...'}
+                    </span>
+                  </div>
                 </div>
-                <div className="glass-btn-shadow rounded-xl" />
               </div>
-            </button>
+            ) : isClaimSuccess ? (
+              <div className="w-full mt-4 space-y-2">
+                <div className="glass-card rounded-xl w-full py-3 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-sm text-green-400 font-mono">CLAIMED</span>
+                  </div>
+                </div>
+                {txHash && (
+                  <a
+                    href={`${WORLDSCAN_TX_URL}${txHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-center text-[11px] text-aurora-cyan/70 font-mono hover:text-aurora-cyan transition-colors"
+                  >
+                    View on WorldScan: {txHash.slice(0, 10)}...{txHash.slice(-6)}
+                  </a>
+                )}
+              </div>
+            ) : isClaimFailed ? (
+              <div className="w-full mt-4 space-y-2">
+                <div className="glass-card rounded-xl w-full py-2 px-3 text-center">
+                  <p className="text-xs text-red-400/80 font-mono mb-1">
+                    {claimError || txError || 'Transaction failed'}
+                  </p>
+                  {(claimError?.includes('World App') || claimError?.includes('MiniKit')) ? (
+                    <p className="text-[10px] text-arctic/40">
+                      Please open this app in World App to claim rewards.
+                    </p>
+                  ) : null}
+                </div>
+                <button onClick={handleRetry} className="w-full">
+                  <div className="glass-btn-wrap rounded-xl w-full">
+                    <div className="glass-btn rounded-xl w-full">
+                      <span className="glass-btn-text block py-3 text-center text-sm font-bold">
+                        RETRY
+                      </span>
+                    </div>
+                    <div className="glass-btn-shadow rounded-xl" />
+                  </div>
+                </button>
+              </div>
+            ) : (
+              <button onClick={handleClaim} className="w-full mt-4">
+                <div className="glass-btn-wrap rounded-xl w-full">
+                  <div className="glass-btn rounded-xl w-full">
+                    <span className="glass-btn-text block py-3 text-center text-sm font-bold">
+                      CLAIM REWARD
+                    </span>
+                  </div>
+                  <div className="glass-btn-shadow rounded-xl" />
+                </div>
+              </button>
+            )}
           </div>
         </div>
 
@@ -219,7 +340,7 @@ export default function RewardsPage() {
           </div>
         </div>
 
-        {/* On-chain Activity (온체인 통계가 있을 때만 표시) */}
+        {/* On-chain Activity */}
         {onChainStats && (
           <div className="glass-card rounded-2xl p-4 space-y-3">
             <div className="flex items-center gap-2">
@@ -254,7 +375,7 @@ export default function RewardsPage() {
             <div className="p-4 font-mono text-xs max-h-[200px] overflow-auto scrollbar-hide">
               {rewards.contributions.length === 0 ? (
                 <div className="text-arctic/30 py-4 text-center">
-                  기여 내역이 없습니다
+                  No contributions yet
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -288,7 +409,7 @@ export default function RewardsPage() {
               <div className="glass-btn-wrap rounded-xl w-full">
                 <div className="glass-btn rounded-xl w-full">
                   <span className="glass-btn-text block py-3 text-center text-sm font-medium">
-                    기여 시작하기
+                    Start Contributing
                   </span>
                 </div>
                 <div className="glass-btn-shadow rounded-xl" />

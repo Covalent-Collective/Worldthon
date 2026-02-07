@@ -392,7 +392,7 @@ export function ContributionReceipt({
         <div className="mt-3 pt-3 border-t border-dashed border-white/10 flex items-center justify-center">
           <div className="text-center">
             <div className="text-[9px] text-arctic/30 uppercase tracking-widest mb-1">
-              Verified by Seed Vault
+              Verified by NOAH
             </div>
             <div className="flex items-center justify-center gap-1">
               <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse" />

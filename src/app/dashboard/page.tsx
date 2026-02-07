@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useUserStore } from '@/stores/userStore'
+import { useAuthStore } from '@/stores/authStore'
 import { useBotsStore } from '@/stores/botsStore'
 import { BottomNav } from '@/components/BottomNav'
 import { AuroraBackground } from '@/components/AuroraBackground'
@@ -38,6 +39,8 @@ function formatRelativeTime(dateStr: string): string {
 
 export default function DashboardPage() {
   const { rewards, loadUserData, isVerified, userId } = useUserStore()
+  const { isAuthenticated } = useAuthStore()
+  const isUserVerified = isAuthenticated || isVerified
   const { bots, loadBots, getBotById } = useBotsStore()
   const [mounted, setMounted] = useState(false)
 
@@ -47,10 +50,10 @@ export default function DashboardPage() {
   }, [loadBots])
 
   useEffect(() => {
-    if (isVerified && userId) {
+    if (isUserVerified && userId) {
       loadUserData()
     }
-  }, [isVerified, userId, loadUserData])
+  }, [isUserVerified, userId, loadUserData])
 
   // Generate 66-day activity heatmap data
   const heatmapData = useMemo(() => {
@@ -95,22 +98,22 @@ export default function DashboardPage() {
     return cells
   }, [rewards.contributions])
 
-  // Hardcoded 3 communities for demo
-  const displayCommunities = useMemo(() => {
+  // Hardcoded 3 repositories for demo
+  const displayRepositories = useMemo(() => {
     return [
-      bots.find(b => b.id === 'startup-mentor') || { id: 'startup-mentor', name: '스타트업 멘토', icon: '🚀', profileImage: '', nodeCount: 342 },
+      bots.find(b => b.id === 'startup-mentor') || { id: 'startup-mentor', name: '스타트업의 기쁨과 슬픔', icon: '🚀', profileImage: '', nodeCount: 342 },
       bots.find(b => b.id === 'worldcoin-expert') || { id: 'worldcoin-expert', name: 'World Coin 전문가', icon: '🌐', profileImage: '', nodeCount: 128 },
       bots.find(b => b.id === 'seoul-local-guide') || { id: 'seoul-local-guide', name: '서울 로컬 가이드', icon: '🏙️', profileImage: '', nodeCount: 89 },
     ]
   }, [bots])
-  const communityLabel = '참여 커뮤니티'
+  const repositoryLabel = '참여 저장소'
 
   // Recent contributions - mock data for demo
   const recentContributions = useMemo(() => {
     const mock = [
-      { botId: 'startup-mentor', botIcon: '🚀', botName: '스타트업 멘토', label: 'PMF 찾는 실전 방법론', createdAt: new Date(Date.now() - 1000 * 60 * 23).toISOString() },
+      { botId: 'startup-mentor', botIcon: '🚀', botName: '스타트업의 기쁨과 슬픔', label: 'PMF 찾는 실전 방법론', createdAt: new Date(Date.now() - 1000 * 60 * 23).toISOString() },
       { botId: 'worldcoin-expert', botIcon: '🌐', botName: 'World Coin 전문가', label: 'MiniKit 연동 가이드', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString() },
-      { botId: 'startup-mentor', botIcon: '🚀', botName: '스타트업 멘토', label: '시드 투자 IR 덱 작성법', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString() },
+      { botId: 'startup-mentor', botIcon: '🚀', botName: '스타트업의 기쁨과 슬픔', label: '시드 투자 IR 덱 작성법', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString() },
       { botId: 'seoul-local-guide', botIcon: '🏙️', botName: '서울 로컬 가이드', label: '성수동 카페 루트 추천', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString() },
       { botId: 'worldcoin-expert', botIcon: '🌐', botName: 'World Coin 전문가', label: 'World ID 인증 레벨 비교', createdAt: new Date(Date.now() - 1000 * 60 * 60 * 50).toISOString() },
     ]
@@ -163,17 +166,17 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Communities */}
+        {/* Repositories */}
         <div className="glass-card rounded-3xl p-4">
-          <p className="text-arctic/60 text-xs font-mono mb-2">{communityLabel}</p>
+          <p className="text-arctic/60 text-xs font-mono mb-2">{repositoryLabel}</p>
 
           <div className="space-y-0">
-            {displayCommunities.length === 0 ? (
+            {displayRepositories.length === 0 ? (
               <div className="py-6 text-center text-arctic/30 text-sm font-mono">
                 로딩 중...
               </div>
             ) : (
-              displayCommunities.map((bot) => (
+              displayRepositories.map((bot) => (
                 <Link
                   key={bot.id}
                   href={`/community/${bot.id}`}

@@ -13,7 +13,7 @@ interface ExtractedKeyword {
   type: 'emotion' | 'topic' | 'entity'
 }
 
-interface RecommendedCommunity {
+interface RecommendedRepository {
   id: string
   name: string
   icon: string
@@ -21,16 +21,57 @@ interface RecommendedCommunity {
   reason: string
 }
 
+/** Mock speech-to-text transcript */
+const MOCK_TRANSCRIPT = '매출도 안 나는데 자비를 태워가며 푼돈 벌고, 그 돈으로 클로드 결제하고 멤버들 월급까지 주고 있는 상황이라 고민이 많네. 지금 시점에서 프리 A 투자를 받아야 할지, 받는다면 적정 밸류는 얼마가 좋을지, 혹은 투자를 받음으로써 내가 너무 묶이게 되는 건 아닌지 걱정돼. 특히나 지금 같은 AI 시대에 정말 투자를 받는 게 맞는 방향인지도 의문이고. 다른 사람들은 도대체 어떻게 생각하고 있을까?'
+
+/** Mock recommended feed after analysis */
+interface FeedItem {
+  type: 'warning' | 'insight' | 'example' | 'tip'
+  title: string
+  snippet: string
+  source: string
+}
+
+const MOCK_FEED: FeedItem[] = [
+  {
+    type: 'warning',
+    title: '프리A 30억 받고 시리즈A 못 돌린 스타트업 이야기',
+    snippet: '높은 밸류로 프리A를 받으면 다음 라운드에서 업사이드를 증명해야 하는 부담이 커집니다. 실제로 2024년 프리A 30억 받은 B사는 18개월 만에 런웨이가 바닥나 다운라운드를 제안받았습니다.',
+    source: '졸린 호랑이 · 스타트업의 기쁨과 슬픔',
+  },
+  {
+    type: 'insight',
+    title: 'AI 시대, 투자 없이 매출로 성장하는 기업들',
+    snippet: 'Midjourney는 외부 투자 0원으로 연 매출 2억 달러를 달성했습니다. Basecamp, Mailchimp도 부트스트래핑으로 성장한 대표 사례. 핵심은 Day 1부터 과금 모델을 설계하는 것.',
+    source: '배고픈 판다 · 스타트업의 기쁨과 슬픔',
+  },
+  {
+    type: 'example',
+    title: '시드 투자 받았다가 창업자 지분 20%로 쪼그라든 후기',
+    snippet: '엔젤 → 시드 → 프리A까지 3번의 라운드를 거치면서 창업자 지분이 60% → 35% → 20%로 희석됐습니다. 매 라운드마다 이사회 구성이 바뀌면서 의사결정 속도도 현저히 느려졌어요.',
+    source: '용감한 수달 · 스타트업의 기쁨과 슬픔',
+  },
+  {
+    type: 'tip',
+    title: 'TIPS 받으려면 엔젤투자는 필수, 액셀러레이터를 찾아라',
+    snippet: '한국에서 TIPS(최대 5억)를 받으려면 엔젤투자 유치가 전제 조건입니다. 스파크랩, 프라이머, 매쉬업엔젤스 같은 초기 AC를 먼저 접촉하세요. AC 투자금은 보통 3천만~1억 수준이지만 TIPS 연계가 핵심 가치입니다.',
+    source: '현명한 부엉이 · 스타트업의 기쁨과 슬픔',
+  },
+]
+
 export function JournalingHome() {
   const { nullifierHash, logout } = useUserStore()
   const { bots, loadBots } = useBotsStore()
   const [recordingState, setRecordingState] = useState<RecordingState>('idle')
   const [recordingTime, setRecordingTime] = useState(0)
   const [extractedKeywords, setExtractedKeywords] = useState<ExtractedKeyword[]>([])
-  const [recommendedCommunities, setRecommendedCommunities] = useState<RecommendedCommunity[]>([])
+  const [recommendedRepositories, setRecommendedRepositories] = useState<RecommendedRepository[]>([])
   const [selectedVaultIds, setSelectedVaultIds] = useState<Set<string>>(new Set())
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
+  const [typedText, setTypedText] = useState('')
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const typingRef = useRef<NodeJS.Timeout | null>(null)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     loadBots()
@@ -55,11 +96,38 @@ export function JournalingHome() {
     }
   }, [recordingState])
 
+  // Typing animation during recording
+  useEffect(() => {
+    if (recordingState === 'recording') {
+      let charIndex = 0
+      setTypedText('')
+      typingRef.current = setInterval(() => {
+        charIndex++
+        if (charIndex <= MOCK_TRANSCRIPT.length) {
+          setTypedText(MOCK_TRANSCRIPT.slice(0, charIndex))
+          if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+          }
+        } else {
+          if (typingRef.current) clearInterval(typingRef.current)
+        }
+      }, 50)
+    } else {
+      if (typingRef.current) {
+        clearInterval(typingRef.current)
+      }
+    }
+    return () => {
+      if (typingRef.current) clearInterval(typingRef.current)
+    }
+  }, [recordingState])
+
   const startRecording = useCallback(() => {
     setRecordingState('recording')
     setRecordingTime(0)
+    setTypedText('')
     setExtractedKeywords([])
-    setRecommendedCommunities([])
+    setRecommendedRepositories([])
   }, [])
 
   const stopRecording = useCallback(() => {
@@ -67,20 +135,20 @@ export function JournalingHome() {
 
     // Simulate AI processing
     setTimeout(() => {
-      // Mock extracted keywords (startup-related)
       setExtractedKeywords([
-        { text: '창업', type: 'topic' },
-        { text: '투자', type: 'topic' },
-        { text: '도전', type: 'emotion' },
-        { text: 'PMF', type: 'entity' },
-        { text: '성장', type: 'emotion' },
+        { text: '프리A 투자', type: 'topic' },
+        { text: '밸류에이션', type: 'entity' },
+        { text: '번아웃', type: 'emotion' },
+        { text: 'AI 시대', type: 'topic' },
+        { text: '부트스트래핑', type: 'entity' },
+        { text: '걱정', type: 'emotion' },
       ])
 
-      // Startup-related recommended communities
-      setRecommendedCommunities([
+      // Startup-related recommended repositories
+      setRecommendedRepositories([
         {
           id: 'startup-mentor',
-          name: '스타트업 멘토',
+          name: '스타트업의 기쁨과 슬픔',
           icon: '🚀',
           matchScore: 97,
           reason: '창업·투자 키워드 일치',
@@ -118,8 +186,9 @@ export function JournalingHome() {
   const resetRecording = useCallback(() => {
     setRecordingState('idle')
     setRecordingTime(0)
+    setTypedText('')
     setExtractedKeywords([])
-    setRecommendedCommunities([])
+    setRecommendedRepositories([])
     setSelectedVaultIds(new Set())
     setCapturedPhoto(null)
   }, [])
@@ -170,14 +239,35 @@ export function JournalingHome() {
               )}
 
               {recordingState === 'recording' && (
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                  <span className="text-3xl font-digital font-bold text-aurora-cyan tracking-wider">{formatTime(recordingTime)}</span>
-                </div>
+                <>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                    <span className="text-3xl font-digital font-bold text-aurora-cyan tracking-wider">{formatTime(recordingTime)}</span>
+                  </div>
+                  {/* Live transcript */}
+                  {typedText && (
+                    <div
+                      ref={scrollRef}
+                      className="w-full max-w-sm max-h-[120px] overflow-y-auto scrollbar-hide mb-4 px-1"
+                    >
+                      <p className="text-arctic/70 text-sm leading-relaxed">
+                        {typedText}
+                        <span className="inline-block w-[2px] h-[14px] bg-aurora-cyan ml-0.5 animate-pulse align-text-bottom" />
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
 
               {recordingState === 'processing' && (
-                <p className="text-arctic/50 text-sm mb-4">AI가 분석 중입니다...</p>
+                <>
+                  {typedText && (
+                    <div className="w-full max-w-sm max-h-[100px] overflow-y-auto scrollbar-hide mb-3 px-1 opacity-50">
+                      <p className="text-arctic/50 text-xs leading-relaxed">{typedText}</p>
+                    </div>
+                  )}
+                  <p className="text-arctic/50 text-sm mb-4">AI가 분석 중입니다...</p>
+                </>
               )}
 
               <VoiceOrb
@@ -188,7 +278,7 @@ export function JournalingHome() {
               <p className="text-arctic/40 text-xs mt-6 font-mono">
                 {recordingState === 'idle' && 'TAP TO START'}
                 {recordingState === 'recording' && 'TAP TO STOP'}
-                {recordingState === 'processing' && '키워드 추출 및 커뮤니티 매칭'}
+                {recordingState === 'processing' && '키워드 추출 및 저장소 매칭'}
               </p>
             </motion.div>
           )}
@@ -276,51 +366,51 @@ export function JournalingHome() {
               <div className="w-full glass-card rounded-3xl p-4 mb-6 flex-shrink-0">
                 <p className="text-arctic/60 text-xs mb-3 font-mono">RECOMMENDED VAULT</p>
                 <div className="space-y-2">
-                  {recommendedCommunities.map((community, i) => (
+                  {recommendedRepositories.map((repository, i) => (
                     <motion.button
-                      key={community.id}
+                      key={repository.id}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.5 + i * 0.15 }}
                       onClick={() => setSelectedVaultIds(prev => {
                         const next = new Set(prev)
-                        if (next.has(community.id)) {
-                          next.delete(community.id)
+                        if (next.has(repository.id)) {
+                          next.delete(repository.id)
                         } else {
-                          next.add(community.id)
+                          next.add(repository.id)
                         }
                         return next
                       })}
                       className={`flex items-center gap-3 p-2.5 rounded-xl w-full text-left transition-all ${
-                        selectedVaultIds.has(community.id)
+                        selectedVaultIds.has(repository.id)
                           ? 'bg-white/10 ring-1 ring-aurora-cyan/40'
                           : 'hover:bg-white/5'
                       }`}
                     >
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                        selectedVaultIds.has(community.id)
+                        selectedVaultIds.has(repository.id)
                           ? 'bg-gradient-to-br from-aurora-cyan/30 to-aurora-violet/30'
                           : 'bg-gradient-to-br from-aurora-cyan/20 to-aurora-violet/20'
                       }`}>
-                        <span className="text-xl">{community.icon}</span>
+                        <span className="text-xl">{repository.icon}</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="text-arctic text-sm font-medium">{community.name}</p>
+                          <p className="text-arctic text-sm font-medium">{repository.name}</p>
                           {i === 0 && (
                             <span className="px-1.5 py-0.5 rounded-md bg-aurora-violet/20 text-aurora-violet text-[10px] font-medium whitespace-nowrap">
                               참여중
                             </span>
                           )}
                         </div>
-                        <p className="text-arctic/40 text-xs">{community.reason}</p>
+                        <p className="text-arctic/40 text-xs">{repository.reason}</p>
                       </div>
                       <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all flex-shrink-0 ${
-                        selectedVaultIds.has(community.id)
+                        selectedVaultIds.has(repository.id)
                           ? 'border-aurora-cyan bg-aurora-cyan'
                           : 'border-arctic/20'
                       }`}>
-                        {selectedVaultIds.has(community.id) && (
+                        {selectedVaultIds.has(repository.id) && (
                           <svg className="w-3 h-3 text-permafrost" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                           </svg>

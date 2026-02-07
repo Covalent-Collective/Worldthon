@@ -823,13 +823,13 @@ const baseExpertBots: ExpertBot[] = [
   },
   {
     id: 'startup-mentor',
-    name: '스타트업 멘토',
+    name: '스타트업의 기쁨과 슬픔',
     description: '창업, 투자, 스케일업 경험 공유',
     icon: 'B',
     profileImage: '/profiles/startup-mentor.png',
     category: '비즈니스',
     nodeCount: 38,
-    contributorCount: 15,
+    contributorCount: 10,
     graph: {
       nodes: [
         {

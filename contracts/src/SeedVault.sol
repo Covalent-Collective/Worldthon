@@ -3,6 +3,13 @@ pragma solidity ^0.8.24;
 
 import {IWorldID} from "./interfaces/IWorldID.sol";
 
+/// @title IERC20 - Minimal ERC-20 interface for WLD token interactions.
+interface IERC20 {
+    function balanceOf(address account) external view returns (uint256);
+    function transfer(address to, uint256 amount) external returns (bool);
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
+}
+
 /// @title SeedVault
 /// @notice On-chain registry for knowledge contributions to expert bots.
 ///         Users contribute knowledge, earn citations, and claim WLD rewards.
@@ -15,7 +22,7 @@ import {IWorldID} from "./interfaces/IWorldID.sol";
 ///
 ///      Reward flow:
 ///        1. User submits a contribution with a World ID proof  (recordContribution)
-///        2. Anyone can register citations against contributions (recordCitations)
+///        2. Owner records citations against contributions       (recordCitations)
 ///        3. Contributors claim accumulated rewards              (claimReward)
 ///
 ///      Security highlights:
@@ -23,6 +30,8 @@ import {IWorldID} from "./interfaces/IWorldID.sol";
 ///        - Checks-Effects-Interactions on claimReward prevents reentrancy.
 ///        - Owner-gated admin functions use a minimal onlyOwner modifier
 ///          (no external dependency needed for a single-owner model).
+///        - Citations are owner-gated (server relayer pattern) with duplicate prevention.
+///        - Pause/unpause for emergency circuit breaker.
 contract SeedVault {
     // -----------------------------------------------------------------------
     //  Errors
@@ -30,10 +39,14 @@ contract SeedVault {
 
     error InvalidNullifier();
     error DuplicateContribution();
+    error DuplicateCitation();
     error ContributionNotFound();
     error NoPendingRewards();
     error TransferFailed();
     error Unauthorized();
+    error ZeroAddress();
+    error BatchTooLarge();
+    error ContractPaused();
 
     // -----------------------------------------------------------------------
     //  Events
@@ -52,6 +65,24 @@ contract SeedVault {
     /// @notice Emitted when a user successfully claims their reward.
     event RewardClaimed(address indexed user, uint256 amount);
 
+    /// @notice Emitted when WLD rewards are deposited into the contract.
+    event RewardsDeposited(address indexed depositor, uint256 amount);
+
+    /// @notice Emitted when the World ID Router address is updated.
+    event WorldIdUpdated(address indexed newWorldId);
+
+    /// @notice Emitted when the owner performs an emergency withdrawal.
+    event EmergencyWithdraw(address indexed owner, uint256 amount);
+
+    /// @notice Emitted when contract ownership is transferred.
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    /// @notice Emitted when the contract is paused.
+    event Paused(address indexed account);
+
+    /// @notice Emitted when the contract is unpaused.
+    event Unpaused(address indexed account);
+
     // -----------------------------------------------------------------------
     //  Structs
     // -----------------------------------------------------------------------
@@ -69,8 +100,11 @@ contract SeedVault {
     //  Constants
     // -----------------------------------------------------------------------
 
-    /// @notice Reward paid per citation (0.001 ether as a WLD proxy).
-    uint256 public constant REWARD_PER_CITATION = 0.001 ether;
+    /// @notice Reward paid per citation (0.001 WLD, 18 decimals).
+    uint256 public constant REWARD_PER_CITATION = 1e15;
+
+    /// @notice Maximum number of citations that can be recorded in a single batch.
+    uint256 public constant MAX_BATCH_SIZE = 50;
 
     // -----------------------------------------------------------------------
     //  State Variables
@@ -78,6 +112,9 @@ contract SeedVault {
 
     /// @notice World ID Router contract used for on-chain proof verification.
     IWorldID public worldId;
+
+    /// @notice WLD ERC-20 token used for reward payments.
+    IERC20 public wldToken;
 
     /// @notice World ID group (1 = Orb-verified credentials).
     uint256 public groupId;
@@ -91,6 +128,9 @@ contract SeedVault {
     /// @notice Contract owner — can deposit rewards and update config.
     address public owner;
 
+    /// @notice Whether the contract is paused.
+    bool public paused;
+
     /// @notice Tracks used nullifier hashes to prevent double-signaling.
     mapping(uint256 => bool) public nullifierHashes;
 
@@ -99,6 +139,9 @@ contract SeedVault {
 
     /// @notice Accumulated but unclaimed rewards per contributor address.
     mapping(address => uint256) public pendingRewards;
+
+    /// @notice Duplicate citation prevention: contentHash => citingHash => already cited.
+    mapping(bytes32 => mapping(bytes32 => bool)) public citedBy;
 
     /// @notice Running total of contributions recorded.
     uint256 public totalContributions;
@@ -115,6 +158,11 @@ contract SeedVault {
         _;
     }
 
+    modifier whenNotPaused() {
+        if (paused) revert ContractPaused();
+        _;
+    }
+
     // -----------------------------------------------------------------------
     //  Constructor
     // -----------------------------------------------------------------------
@@ -123,17 +171,32 @@ contract SeedVault {
     /// @param _appId    World ID app identifier.
     /// @param _actionId Action string that scopes the proof.
     /// @param _groupId  Credential group (1 for Orb).
+    /// @param _wldToken Address of the WLD ERC-20 token.
     constructor(
         IWorldID _worldId,
         string memory _appId,
         string memory _actionId,
-        uint256 _groupId
+        uint256 _groupId,
+        IERC20 _wldToken
     ) {
         worldId = _worldId;
         appId = _appId;
         actionId = _actionId;
         groupId = _groupId;
+        wldToken = _wldToken;
         owner = msg.sender;
+    }
+
+    // -----------------------------------------------------------------------
+    //  Internal Helpers
+    // -----------------------------------------------------------------------
+
+    /// @notice Hash a value to a field element (matching World ID's hashToField).
+    /// @dev Returns keccak256(value) >> 8 to fit within the BN254 scalar field.
+    /// @param value The bytes to hash.
+    /// @return The field element.
+    function hashToField(bytes memory value) internal pure returns (uint256) {
+        return uint256(keccak256(value)) >> 8;
     }
 
     // -----------------------------------------------------------------------
@@ -159,7 +222,7 @@ contract SeedVault {
         uint256 root,
         uint256 nullifierHash,
         uint256[8] calldata proof
-    ) external {
+    ) external whenNotPaused {
         // --- Checks ---
 
         // Prevent double-signaling with the same nullifier.
@@ -168,16 +231,24 @@ contract SeedVault {
         // Prevent duplicate contributions for the same content.
         if (contributions[contentHash].exists) revert DuplicateContribution();
 
+        // Compute signal hash using hashToField (matches World ID official implementation).
+        uint256 signalHash = hashToField(abi.encodePacked(signal));
+
+        // Compute externalNullifierHash: hashToField(hashToField(appId), actionId)
+        uint256 externalNullifierHash = hashToField(
+            abi.encodePacked(
+                hashToField(abi.encodePacked(appId)),
+                actionId
+            )
+        );
+
         // Verify the World ID proof on-chain.
-        // externalNullifierHash scopes the proof to this app + action.
         worldId.verifyProof(
             root,
             groupId,
-            abi.encodePacked(signal).length == 20
-                ? uint256(uint160(signal))
-                : uint256(keccak256(abi.encodePacked(signal))),
+            signalHash,
             nullifierHash,
-            uint256(keccak256(abi.encodePacked(appId, actionId))),
+            externalNullifierHash,
             proof
         );
 
@@ -200,19 +271,30 @@ contract SeedVault {
     }
 
     /// @notice Record one or more citations against existing contributions.
-    /// @dev Vending machine: each valid contentHash increments its citationCount
-    ///      by exactly 1, and credits the contributor exactly REWARD_PER_CITATION.
-    ///      Citations are public — anyone can submit them (e.g. a bot backend).
+    /// @dev Owner-gated (server relayer pattern). Each valid contentHash increments
+    ///      its citationCount by exactly 1, and credits the contributor exactly
+    ///      REWARD_PER_CITATION. Duplicate citations (same citingHash for a
+    ///      contentHash) are rejected.
     ///
     /// @param contentHashes  Array of content hashes that were cited.
-    function recordCitations(bytes32[] calldata contentHashes) external {
+    /// @param citingHashes   Array of hashes identifying the citing content (parallel to contentHashes).
+    function recordCitations(
+        bytes32[] calldata contentHashes,
+        bytes32[] calldata citingHashes
+    ) external onlyOwner whenNotPaused {
+        require(contentHashes.length == citingHashes.length, "Array length mismatch");
+        if (contentHashes.length > MAX_BATCH_SIZE) revert BatchTooLarge();
+
         for (uint256 i = 0; i < contentHashes.length; i++) {
             bytes32 hash = contentHashes[i];
+            bytes32 citing = citingHashes[i];
             Contribution storage c = contributions[hash];
 
             if (!c.exists) revert ContributionNotFound();
+            if (citedBy[hash][citing]) revert DuplicateCitation();
 
             // --- Effects ---
+            citedBy[hash][citing] = true;
             c.citationCount++;
             pendingRewards[c.contributor] += REWARD_PER_CITATION;
             totalCitations++;
@@ -223,13 +305,14 @@ contract SeedVault {
 
     /// @notice Claim all accumulated rewards for the caller.
     /// @dev Vending machine: if pendingRewards > 0, caller receives that exact
-    ///      amount. Uses checks-effects-interactions to prevent reentrancy.
+    ///      amount in WLD tokens. Uses checks-effects-interactions to prevent
+    ///      reentrancy.
     ///
     ///      Flow:
     ///        1. CHECK  — revert if nothing is owed.
     ///        2. EFFECT — zero the balance *before* the external call.
-    ///        3. INTERACT — transfer ETH/WLD to the caller.
-    function claimReward() external {
+    ///        3. INTERACT — transfer WLD to the caller.
+    function claimReward() external whenNotPaused {
         // --- Checks ---
         uint256 amount = pendingRewards[msg.sender];
         if (amount == 0) revert NoPendingRewards();
@@ -238,7 +321,7 @@ contract SeedVault {
         pendingRewards[msg.sender] = 0;
 
         // --- Interactions ---
-        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        bool success = wldToken.transfer(msg.sender, amount);
         if (!success) revert TransferFailed();
 
         emit RewardClaimed(msg.sender, amount);
@@ -261,7 +344,7 @@ contract SeedVault {
 
     /// @notice Check the unclaimed reward balance for any address.
     /// @param user  The address to query.
-    /// @return The pending reward amount in wei.
+    /// @return The pending reward amount in WLD (18 decimals).
     function getPendingReward(address user) external view returns (uint256) {
         return pendingRewards[user];
     }
@@ -277,22 +360,65 @@ contract SeedVault {
         return (totalContributions, totalCitations);
     }
 
+    /// @notice Return the current WLD reward pool balance held by this contract.
+    /// @return The WLD token balance of this contract.
+    function getRewardPoolBalance() external view returns (uint256) {
+        return wldToken.balanceOf(address(this));
+    }
+
     // -----------------------------------------------------------------------
     //  Admin Functions
     // -----------------------------------------------------------------------
 
-    /// @notice Deposit ETH/WLD into the contract to fund the reward pool.
-    /// @dev Only the owner can deposit. The vending machine needs to be stocked.
-    function depositRewards() external payable onlyOwner {
-        // Funds are held by the contract; no further bookkeeping needed.
+    /// @notice Deposit WLD tokens into the contract to fund the reward pool.
+    /// @dev Only the owner can deposit. Requires prior ERC-20 approval.
+    /// @param amount  The amount of WLD tokens to deposit (18 decimals).
+    function depositRewards(uint256 amount) external onlyOwner {
+        bool success = wldToken.transferFrom(msg.sender, address(this), amount);
+        if (!success) revert TransferFailed();
+
+        emit RewardsDeposited(msg.sender, amount);
     }
 
     /// @notice Update the World ID Router address.
     /// @param _worldId  New IWorldID-compatible router address.
     function updateWorldId(address _worldId) external onlyOwner {
+        require(_worldId != address(0), "Zero address");
         worldId = IWorldID(_worldId);
+
+        emit WorldIdUpdated(_worldId);
     }
 
-    /// @notice Allow the contract to receive plain ETH transfers (e.g. for funding).
-    receive() external payable {}
+    /// @notice Transfer ownership of the contract to a new address.
+    /// @param newOwner  The address of the new owner.
+    function transferOwnership(address newOwner) external onlyOwner {
+        if (newOwner == address(0)) revert ZeroAddress();
+        address previousOwner = owner;
+        owner = newOwner;
+
+        emit OwnershipTransferred(previousOwner, newOwner);
+    }
+
+    /// @notice Emergency withdraw WLD tokens to the owner address.
+    /// @param amount  The amount of WLD tokens to withdraw.
+    function emergencyWithdraw(uint256 amount) external onlyOwner {
+        bool success = wldToken.transfer(owner, amount);
+        if (!success) revert TransferFailed();
+
+        emit EmergencyWithdraw(owner, amount);
+    }
+
+    /// @notice Pause the contract, disabling core functions.
+    function pause() external onlyOwner {
+        paused = true;
+
+        emit Paused(msg.sender);
+    }
+
+    /// @notice Unpause the contract, re-enabling core functions.
+    function unpause() external onlyOwner {
+        paused = false;
+
+        emit Unpaused(msg.sender);
+    }
 }

@@ -6,9 +6,10 @@ import Link from 'next/link'
 import { keccak256, toHex } from 'viem'
 import { useBotsStore } from '@/stores/botsStore'
 import { useUserStore } from '@/stores/userStore'
+import { useAuthStore } from '@/stores/authStore'
 import { useKnowledgeStore } from '@/stores/knowledgeStore'
 import { VerifyButton } from '@/components/VerifyButton'
-import { recordContributionOnChain, isContractConfigured } from '@/lib/contract'
+import { recordContributionOnChain, isContractConfigured, type WorldIdProof } from '@/lib/contract'
 import { commitToSegment } from '@/lib/zk-segments'
 import type { KnowledgeNode } from '@/lib/types'
 
@@ -24,6 +25,8 @@ export default function ContributePage() {
   const bot = getStoreBotById(botId)
 
   const { isVerified, verificationLevel, nullifierHash, addContribution } = useUserStore()
+  const { isAuthenticated } = useAuthStore()
+  const isUserVerified = isAuthenticated || isVerified
   const { addNode, getContributionCount } = useKnowledgeStore()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -32,8 +35,8 @@ export default function ContributePage() {
   const [onChainRecorded, setOnChainRecorded] = useState(false)
 
   // Determine if contributions are allowed (Orb only)
-  const isDeviceOnly = isVerified && verificationLevel === 'device'
-  const canContribute = isVerified && !isDeviceOnly
+  const isDeviceOnly = isUserVerified && verificationLevel === 'device'
+  const canContribute = isUserVerified && !isDeviceOnly
 
   // Get current contribution count for this bot
   const contributionCount = getContributionCount(botId)
@@ -80,10 +83,18 @@ export default function ContributePage() {
       addNode(botId, newNode)
 
       // On-chain recording (fire-and-forget, supplementary to DB)
-      // 컨트랙트가 설정된 경우에만 온체인 기록 시도
+      // Real proof verification is handled server-side; the relayer pattern
+      // now records on-chain via /api/contribute. This client-side path uses
+      // placeholder proof values and only runs if MiniKit + contract are available.
       if (isContractConfigured()) {
         const contentHash = keccak256(toHex(content))
-        recordContributionOnChain(contentHash, botId)
+        const placeholderProof: WorldIdProof = {
+          signal: '0x0000000000000000000000000000000000000000',
+          root: BigInt(0),
+          nullifierHash: BigInt(0),
+          proof: Array(8).fill(BigInt(0)),
+        }
+        recordContributionOnChain(contentHash, botId, placeholderProof)
           .then((result) => {
             if (result) {
               console.log('[ON-CHAIN] Contribution tx:', result.transactionId)
@@ -91,7 +102,7 @@ export default function ContributePage() {
             }
           })
           .catch(() => {
-            // 온체인 기록 실패는 무시 - DB 기록이 우선
+            // On-chain recording failure is non-fatal; DB record is the source of truth
           })
       }
 
@@ -158,7 +169,7 @@ export default function ContributePage() {
           <div className="space-y-2">
             <h1 className="text-2xl font-bold text-arctic">지식이 추가되었습니다!</h1>
             <p className="text-arctic/60 text-sm">
-              당신의 지식이 Seed Vault에<br />영구 보존됩니다
+              당신의 지식이 NOAH에<br />영구 보존됩니다
             </p>
           </div>
 
@@ -225,9 +236,9 @@ export default function ContributePage() {
 
       <div className="flex-1 p-4 space-y-6">
         {/* Step 1: Verification */}
-        <div className={`glass rounded-xl p-4 ${isVerified && verificationLevel === 'orb' ? 'border border-green-500/30' : isVerified && verificationLevel === 'device' ? 'border border-amber-500/30' : ''}`}>
+        <div className={`glass rounded-xl p-4 ${isUserVerified && verificationLevel === 'orb' ? 'border border-green-500/30' : isUserVerified && verificationLevel === 'device' ? 'border border-amber-500/30' : ''}`}>
           <div className="flex items-center gap-3">
-            {isVerified ? (
+            {isUserVerified ? (
               <>
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center ${verificationLevel === 'orb' ? 'bg-green-500 shadow-glow-green' : 'bg-amber-500'}`}>
                   <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -261,7 +272,7 @@ export default function ContributePage() {
             )}
           </div>
 
-          {!isVerified && (
+          {!isUserVerified && (
             <div className="mt-4">
               <VerifyButton />
             </div>

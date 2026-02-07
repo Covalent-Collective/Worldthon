@@ -1,6 +1,6 @@
 {
-  "name": "Seed Vault",
-  "short_name": "Seed Vault",
+  "name": "NOAH",
+  "short_name": "NOAH",
   "description": "Dead Internet 시대, 검증된 인간 지식의 보존소",
   "start_url": "/",
   "display": "standalone",

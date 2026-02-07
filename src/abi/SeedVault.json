@@ -2,10 +2,11 @@
   {
     "type": "constructor",
     "inputs": [
-      { "name": "_worldId", "type": "address", "internalType": "contract IWorldID" },
+      { "name": "_worldId", "type": "address", "internalType": "address" },
       { "name": "_appId", "type": "string", "internalType": "string" },
       { "name": "_actionId", "type": "string", "internalType": "string" },
-      { "name": "_groupId", "type": "uint256", "internalType": "uint256" }
+      { "name": "_groupId", "type": "uint256", "internalType": "uint256" },
+      { "name": "_wldToken", "type": "address", "internalType": "address" }
     ],
     "stateMutability": "nonpayable"
   },
@@ -86,9 +87,20 @@
   {
     "type": "function",
     "name": "depositRewards",
-    "inputs": [],
+    "inputs": [
+      { "name": "amount", "type": "uint256", "internalType": "uint256" }
+    ],
     "outputs": [],
-    "stateMutability": "payable"
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getRewardPoolBalance",
+    "inputs": [],
+    "outputs": [
+      { "name": "", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -101,10 +113,60 @@
   },
   {
     "type": "function",
+    "name": "pause",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "unpause",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "paused",
+    "inputs": [],
+    "outputs": [
+      { "name": "", "type": "bool", "internalType": "bool" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "emergencyWithdraw",
+    "inputs": [
+      { "name": "amount", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
+      { "name": "newOwner", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "worldId",
     "inputs": [],
     "outputs": [
       { "name": "", "type": "address", "internalType": "contract IWorldID" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "wldToken",
+    "inputs": [],
+    "outputs": [
+      { "name": "", "type": "address", "internalType": "contract IERC20" }
     ],
     "stateMutability": "view"
   },
@@ -238,6 +300,58 @@
     "anonymous": false
   },
   {
+    "type": "event",
+    "name": "RewardsDeposited",
+    "inputs": [
+      { "name": "depositor", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "amount", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "WorldIdUpdated",
+    "inputs": [
+      { "name": "oldAddress", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "newAddress", "type": "address", "indexed": true, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "EmergencyWithdraw",
+    "inputs": [
+      { "name": "owner", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "amount", "type": "uint256", "indexed": false, "internalType": "uint256" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      { "name": "previousOwner", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "newOwner", "type": "address", "indexed": true, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Paused",
+    "inputs": [
+      { "name": "account", "type": "address", "indexed": false, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Unpaused",
+    "inputs": [
+      { "name": "account", "type": "address", "indexed": false, "internalType": "address" }
+    ],
+    "anonymous": false
+  },
+  {
     "type": "error",
     "name": "InvalidNullifier",
     "inputs": []
@@ -268,7 +382,18 @@
     "inputs": []
   },
   {
-    "type": "receive",
-    "stateMutability": "payable"
+    "type": "error",
+    "name": "ContractPaused",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientBalance",
+    "inputs": []
   }
 ]

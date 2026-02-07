@@ -21,13 +21,13 @@ const orbitron = Orbitron({
 })
 
 export const metadata: Metadata = {
-  title: 'Seed Vault - Human Knowledge Repository',
+  title: 'NOAH - Human Knowledge Repository',
   description: 'Dead Internet 시대, 검증된 인간 지식의 보존소',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Seed Vault',
+    title: 'NOAH',
   },
 }
 
