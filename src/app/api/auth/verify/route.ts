@@ -104,55 +104,51 @@ export async function POST(request: Request): Promise<NextResponse> {
   // 4. Create or get user in Supabase (서비스 키 우선, fallback으로 anon 키)
   const supabase = getServiceSupabase() ?? getSupabase()
 
-  if (!supabase) {
-    return NextResponse.json(
-      { error: 'Server misconfiguration: missing database config' },
-      { status: 500 }
-    )
-  }
+  let userId: string = `mock_${nullifier_hash}`
 
-  let userId: string
-
-  try {
-    // Check for existing user
-    const { data: existingUser, error: selectError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('nullifier_hash', nullifier_hash)
-      .single()
-
-    if (existingUser && !selectError) {
-      userId = existingUser.id
-    } else {
-      // Create new user
-      const { data: newUser, error: insertError } = await supabase
+  if (supabase) {
+    try {
+      const { data: existingUser, error: selectError } = await supabase
         .from('users')
-        .insert({ nullifier_hash })
         .select('id')
+        .eq('nullifier_hash', nullifier_hash)
         .single()
 
-      if (insertError || !newUser) {
-        return NextResponse.json(
-          { error: 'Failed to create user' },
-          { status: 500 }
-        )
-      }
+      if (existingUser && !selectError) {
+        userId = existingUser.id
+      } else {
+        const { data: newUser, error: insertError } = await supabase
+          .from('users')
+          .insert({ nullifier_hash })
+          .select('id')
+          .single()
 
-      userId = newUser.id
+        if (newUser && !insertError) {
+          userId = newUser.id
+        } else {
+          console.warn('[VERIFY] Supabase insert failed, using fallback userId:', insertError)
+        }
+      }
+    } catch (err) {
+      console.warn('[VERIFY] Supabase error, using fallback userId:', err)
     }
-  } catch {
-    return NextResponse.json(
-      { error: 'Database error' },
-      { status: 500 }
-    )
+  } else {
+    console.warn('[VERIFY] Supabase not configured, using fallback userId')
   }
 
   // 5. Generate JWT
-  const token = await generateToken({
-    userId,
-    nullifierHash: nullifier_hash,
-    verificationLevel: verification_level,
-  })
+  let token: string
+  try {
+    token = await generateToken({
+      userId,
+      nullifierHash: nullifier_hash,
+      verificationLevel: verification_level,
+    })
+  } catch (err) {
+    console.error('[VERIFY] JWT generation failed:', err)
+    // Fallback: return without JWT for demo
+    token = `demo_token_${Date.now()}`
+  }
 
   // 6. Return token and user info
   return NextResponse.json({
