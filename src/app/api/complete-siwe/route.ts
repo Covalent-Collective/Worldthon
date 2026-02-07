@@ -54,23 +54,22 @@ export async function POST(request: Request): Promise<NextResponse> {
   // 4. Extract wallet address from the verified payload
   const walletAddress = body.payload.address.toLowerCase()
 
-  // 5. Store wallet address in Supabase
+  // 5. Store wallet address in Supabase (graceful fallback)
   const supabase = getServiceSupabase() ?? getSupabase()
-  if (!supabase) {
-    return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 })
-  }
+  if (supabase) {
+    const { error } = await supabase
+      .from('users')
+      .update({
+        wallet_address: walletAddress,
+        wallet_linked_at: new Date().toISOString(),
+      })
+      .eq('id', userId)
 
-  const { error } = await supabase
-    .from('users')
-    .update({
-      wallet_address: walletAddress,
-      wallet_linked_at: new Date().toISOString(),
-    })
-    .eq('id', userId)
-
-  if (error) {
-    console.error('[SIWE] Failed to store wallet address:', error)
-    return NextResponse.json({ error: 'Failed to link wallet' }, { status: 500 })
+    if (error) {
+      console.warn('[SIWE] Failed to store wallet in DB, continuing anyway:', error)
+    }
+  } else {
+    console.warn('[SIWE] Supabase not configured, skipping DB update')
   }
 
   return NextResponse.json({
