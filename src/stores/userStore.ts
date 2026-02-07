@@ -108,7 +108,33 @@ export const useUserStore = create<UserState>()(
 
       loadUserData: async () => {
         const { userId } = get()
-        if (!userId || !isSupabaseConfigured()) return
+        if (!userId) return
+
+        // Supabase 미설정 시 데모 데이터로 채움
+        if (!isSupabaseConfigured()) {
+          set({
+            rewards: {
+              contributionPower: 72,
+              totalCitations: 48,
+              pendingWLD: 1.284730,
+              contributions: [
+                { botId: 'startup-joy', nodeId: 'n-101', createdAt: '2025-02-07T09:12:00Z', label: '시드 투자 유치 전략', botName: '스타트업의 기쁨과 슬픔' },
+                { botId: 'startup-joy', nodeId: 'n-102', createdAt: '2025-02-06T18:45:00Z', label: '번아웃 극복기', botName: '스타트업의 기쁨과 슬픔' },
+                { botId: 'startup-joy', nodeId: 'n-103', createdAt: '2025-02-06T14:30:00Z', label: 'VC 미팅 후기', botName: '스타트업의 기쁨과 슬픔' },
+                { botId: 'startup-joy', nodeId: 'n-104', createdAt: '2025-02-05T11:20:00Z', label: '프리A 밸류에이션 고민', botName: '스타트업의 기쁨과 슬픔' },
+                { botId: 'startup-joy', nodeId: 'n-105', createdAt: '2025-02-04T16:05:00Z', label: 'AI 시대 피봇 경험', botName: '스타트업의 기쁨과 슬픔' },
+                { botId: 'startup-joy', nodeId: 'n-106', createdAt: '2025-02-03T10:40:00Z', label: '부트스트래핑 vs 투자', botName: '스타트업의 기쁨과 슬픔' },
+                { botId: 'startup-joy', nodeId: 'n-107', createdAt: '2025-02-02T22:15:00Z', label: '공동창업자와의 갈등', botName: '스타트업의 기쁨과 슬픔' },
+              ]
+            },
+            globalStats: {
+              totalNodes: 1247,
+              totalContributors: 183,
+              totalBots: 12
+            }
+          })
+          return
+        }
 
         set({ isLoading: true })
 
