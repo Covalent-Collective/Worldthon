@@ -146,7 +146,7 @@ export function JournalingHome() {
 
   // Mock BeReal capture - use static image instead of real camera
   const capturePhoto = useCallback(() => {
-    setCapturedPhoto('/bereal-mock.png')
+    setCapturedPhoto('/human-photo.png')
     setRecordingState('complete')
   }, [])
 
@@ -262,7 +262,7 @@ export function JournalingHome() {
               {/* BeReal-style mock — tap to capture */}
               <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden border border-aurora-cyan/20 shadow-[0_0_40px_rgba(0,242,255,0.1)]">
                 <img
-                  src="/bereal-mock.png"
+                  src="/human-photo.png"
                   alt="BeReal style capture"
                   className="w-full h-full object-cover"
                 />
@@ -282,7 +282,7 @@ export function JournalingHome() {
               {/* Hero image with overlaid success indicator */}
               <div className="relative w-3/5 mx-auto aspect-[3/4] rounded-2xl overflow-hidden mb-4 flex-shrink-0">
                 <img
-                  src={capturedPhoto || '/bereal-mock.png'}
+                  src={capturedPhoto || '/human-photo.png'}
                   alt="Captured moment"
                   className="w-full h-full object-cover"
                 />
